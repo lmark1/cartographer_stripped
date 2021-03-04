@@ -21,6 +21,8 @@
 #include <vector>
 
 #include "Eigen/Core"
+#include "cartographer_stripped/common/ceres_solver_options.h"
+#include "cartographer_stripped/proto/ceres_scan_matcher_options_3d.pb.h"
 #include "cartographer_stripped/common/lua_parameter_dictionary.h"
 #include "cartographer_stripped/mapping/hybrid_grid.h"
 #include "cartographer_stripped/sensor/point_cloud.h"
