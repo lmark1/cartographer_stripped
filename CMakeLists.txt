@@ -26,8 +26,16 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR}
                     ${LUA_INCLUDE_DIR})
 
+# TESTS
+
 # Hybrid Grid Test
 add_executable(hybrid_grid_test test/hybrid_grid_test.cc
                                 src/mapping/probability_values.cc)
 target_link_libraries(hybrid_grid_test ${GTEST_BOTH_LIBRARIES} ${GMOCK_BOTH_LIBRARIES}
                       ${GLOG_LIBRARY})
+
+# Interpolated Grid Test
+add_executable(interpolated_grid_test test/interpolated_grid_test.cc
+                                      src/mapping/probability_values.cc)
+target_link_libraries(interpolated_grid_test ${GTEST_BOTH_LIBRARIES}
+                      ${GMOCK_BOTH_LIBRARIES} ${GLOG_LIBRARY})
