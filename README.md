@@ -14,6 +14,8 @@ Used for eductaional puposes.
 - [x] Learn how Ceres scan matching works
 - [ ] Learn how to accumulate pointcloud scans
 - [ ] Build a map using \[Estimated odometry - Pointcloud\] message pairs
+  - [ ] Adjust LocalTrajectoryBuilder3D to accept \[Odometry - Pointcloud\] pairs
+  - [ ] Remove pose extrapolation from LocalTrajectoryBuilder3D
 - [ ] NO global optimizations, loop closing etc.
 - [ ] NO protobuf! (...but actually some protobuf needed for parameters)
 - [ ] NO absl
