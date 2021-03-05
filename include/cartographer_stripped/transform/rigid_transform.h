@@ -19,6 +19,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <Eigen/Core>
@@ -76,6 +77,13 @@ class Rigid2 {
     return Rigid2(translation, rotation);
   }
 
+  std::string DebugString() const {
+    std::ostringstream strs;
+    strs << "t: [" << translation().x() << ", " << translation().y()
+         << "]  r: " << rotation().angle();
+    return strs.str();
+  }
+
  private:
   Vector translation_;
   Rotation2D rotation_;
@@ -98,8 +106,9 @@ typename Rigid2<FloatType>::Vector operator*(
 
 // This is needed for gmock.
 template <typename T>
-std::ostream& operator<<(std::ostream& os,
-                         const cartographer_stripped::transform::Rigid2<T>& rigid) {
+std::ostream& operator<<(
+    std::ostream& os,
+    const cartographer_stripped::transform::Rigid2<T>& rigid) {
   os << rigid.DebugString();
   return os;
 }
@@ -156,11 +165,19 @@ class Rigid3 {
     return Rigid3(translation, rotation);
   }
 
-
   bool IsValid() const {
     return !std::isnan(translation_.x()) && !std::isnan(translation_.y()) &&
            !std::isnan(translation_.z()) &&
            std::abs(FloatType(1) - rotation_.norm()) < FloatType(1e-3);
+  }
+
+  std::string DebugString() const {
+    std::ostringstream strs;
+    strs << "t: [" << translation().x() << ", " << translation().y() << ", "
+         << translation().z() << "] r:  [" << rotation().w() << ", "
+         << rotation().x() << ", " << rotation().y() << ", " << rotation().z()
+         << "]";
+    return strs.str();
   }
 
  private:
@@ -185,8 +202,9 @@ typename Rigid3<FloatType>::Vector operator*(
 
 // This is needed for gmock.
 template <typename T>
-std::ostream& operator<<(std::ostream& os,
-                         const cartographer_stripped::transform::Rigid3<T>& rigid) {
+std::ostream& operator<<(
+    std::ostream& os,
+    const cartographer_stripped::transform::Rigid3<T>& rigid) {
   os << rigid.DebugString();
   return os;
 }

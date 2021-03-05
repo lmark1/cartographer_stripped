@@ -27,7 +27,6 @@ file(GLOB_RECURSE ALL_PROTOS "include/cartographer_stripped/proto/*.proto")
 set(ALL_PROTO_SRCS)
 set(ALL_PROTO_HDRS)
 foreach(ABS_FIL ${ALL_PROTOS})
-  message(WARNING ${ABS_FIL})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
   get_filename_component(DIR ${REL_FIL} DIRECTORY)
   get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
@@ -35,7 +34,6 @@ foreach(ABS_FIL ${ALL_PROTOS})
   list(APPEND ALL_PROTO_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
   list(APPEND ALL_PROTO_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
 
-  message(WARNING ${ALL_PROTO_HDRS})
   add_custom_command(
     OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
            "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
@@ -51,15 +49,33 @@ catkin_package(
   # INCLUDE_DIRS include LIBRARIES cartographer_stripped CATKIN_DEPENDS other_catkin_pkg
   # DEPENDS system_lib
 )
-include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR}
-                    ${PROJECT_BINARY_DIR}/include ${PROJECT_BINARY_DIR} ${LUA_INCLUDE_DIR})
+include_directories(
+  include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR} ${LUA_INCLUDE_DIR})
 
-add_library(
-  ceres_scan_matcher_3d src/mapping/scan_matching/ceres_scan_matcher_3d.cc
-                        src/mapping/scan_matching/ceres_pose.cc ${ALL_PROTO_SRCS})
-target_link_libraries(ceres_scan_matcher_3d ${GTEST_BOTH_LIBRARIES}
-                      ${GMOCK_BOTH_LIBRARIES} ${GLOG_LIBRARY})
 # TESTS
+
+# Ceres scan matcher 3D test
+add_executable(
+  ceres_scan_matcher_3d_test
+  test/ceres_scan_matcher_3d_test.cc
+  src/mapping/scan_matching/ceres_scan_matcher_3d.cc
+  src/mapping/scan_matching/ceres_pose.cc
+  src/common/lua_parameter_dictionary.cc
+  src/common/ceres_solver_options.cc
+  src/mapping/probability_values.cc
+  src/transform/rigid_transform.cc
+  src/sensor/point_cloud.cc
+  ${ALL_PROTO_SRCS})
+
+target_link_libraries(
+  ceres_scan_matcher_3d_test
+  ${GTEST_BOTH_LIBRARIES}
+  ${GMOCK_BOTH_LIBRARIES}
+  ${GLOG_LIBRARY}
+  ${PROTOBUF_LIBRARY}
+  ${CERES_LIBRARIES}
+  ${LUA_LIBRARIES})
 
 # Hybrid Grid Test
 add_executable(hybrid_grid_test test/hybrid_grid_test.cc
