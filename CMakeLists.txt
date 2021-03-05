@@ -53,12 +53,8 @@ include_directories(
   include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/include
   ${PROJECT_BINARY_DIR} ${LUA_INCLUDE_DIR})
 
-# TESTS
-
-# Real time correlative scan matcher 3D test
-add_executable(
-  real_time_correlative_scan_matcher_3d_test
-  test/real_time_correlative_scan_matcher_3d_test.cc
+add_library(
+  real_time_correlative_scan_matcher
   src/mapping/scan_matching/real_time_correlative_scan_matcher_3d.cc
   src/mapping/scan_matching/real_time_correlative_scan_matcher_options.cc
   src/common/lua_parameter_dictionary.cc
@@ -68,7 +64,7 @@ add_executable(
   ${ALL_PROTO_SRCS})
 
 target_link_libraries(
-  real_time_correlative_scan_matcher_3d_test
+  real_time_correlative_scan_matcher
   ${GTEST_BOTH_LIBRARIES}
   ${GMOCK_BOTH_LIBRARIES}
   ${GLOG_LIBRARY}
@@ -76,10 +72,8 @@ target_link_libraries(
   ${CERES_LIBRARIES}
   ${LUA_LIBRARIES})
 
-# Ceres scan matcher 3D test
-add_executable(
-  ceres_scan_matcher_3d_test
-  test/ceres_scan_matcher_3d_test.cc
+add_library(
+  ceres_scan_matcher
   src/mapping/scan_matching/ceres_scan_matcher_3d.cc
   src/mapping/scan_matching/ceres_pose.cc
   src/common/lua_parameter_dictionary.cc
@@ -88,15 +82,63 @@ add_executable(
   src/transform/rigid_transform.cc
   src/sensor/point_cloud.cc
   ${ALL_PROTO_SRCS})
-
 target_link_libraries(
-  ceres_scan_matcher_3d_test
+  ceres_scan_matcher
   ${GTEST_BOTH_LIBRARIES}
   ${GMOCK_BOTH_LIBRARIES}
   ${GLOG_LIBRARY}
   ${PROTOBUF_LIBRARY}
   ${CERES_LIBRARIES}
   ${LUA_LIBRARIES})
+
+# TESTS
+
+# Local Trajectory builder test 3D
+add_executable(
+  local_trajectory_builder_3d_test
+  test/local_trajectory_builder_3d_test.cc
+  src/common/time.cc
+  src/sensor/compressed_point_cloud.cc
+  src/sensor/point_cloud.cc
+  src/sensor/range_data.cc
+  src/mapping/range_data_inserter_3d.cc
+  src/common/lua_parameter_dictionary.cc
+  src/mapping/probability_values.cc
+  src/mapping/submap_3d.cc
+  src/mapping/scan_matching/rotational_scan_matcher.cc
+  src/sensor/voxel_filter.cc
+  src/mapping/motion_filter.cc
+  src/mapping/range_data_collator.cc
+  src/mapping/imu_tracker.cc
+  src/mapping/pose_extrapolator.cc
+  src/mapping/local_trajectory_builder_3d.cc
+  src/mapping/local_trajectory_builder_options_3d.cc
+  src/metrics/counter.cc
+  src/metrics/gauge.cc
+  src/metrics/histogram.cc
+  ${ALL_PROTO_SRCS})
+
+target_link_libraries(
+  local_trajectory_builder_3d_test
+  ${GTEST_BOTH_LIBRARIES}
+  ${GMOCK_BOTH_LIBRARIES}
+  ${GLOG_LIBRARY}
+  ${PROTOBUF_LIBRARY}
+  ${CERES_LIBRARIES}
+  ${LUA_LIBRARIES}
+  real_time_correlative_scan_matcher
+  ceres_scan_matcher)
+
+# Real time correlative scan matcher 3D test
+add_executable(real_time_correlative_scan_matcher_3d_test
+               test/real_time_correlative_scan_matcher_3d_test.cc)
+
+target_link_libraries(real_time_correlative_scan_matcher_3d_test
+                      real_time_correlative_scan_matcher)
+
+# Ceres scan matcher 3D test
+add_executable(ceres_scan_matcher_3d_test test/ceres_scan_matcher_3d_test.cc)
+target_link_libraries(ceres_scan_matcher_3d_test ceres_scan_matcher)
 
 # Hybrid Grid Test
 add_executable(hybrid_grid_test test/hybrid_grid_test.cc

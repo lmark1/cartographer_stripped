@@ -15,7 +15,6 @@
  */
 
 #include "cartographer_stripped/sensor/point_cloud.h"
-
 #include "cartographer_stripped/transform/transform.h"
 
 namespace cartographer_stripped {
