@@ -55,6 +55,27 @@ include_directories(
 
 # TESTS
 
+# Real time correlative scan matcher 3D test
+add_executable(
+  real_time_correlative_scan_matcher_3d_test
+  test/real_time_correlative_scan_matcher_3d_test.cc
+  src/mapping/scan_matching/real_time_correlative_scan_matcher_3d.cc
+  src/mapping/scan_matching/real_time_correlative_scan_matcher_options.cc
+  src/common/lua_parameter_dictionary.cc
+  src/mapping/probability_values.cc
+  src/transform/rigid_transform.cc
+  src/sensor/point_cloud.cc
+  ${ALL_PROTO_SRCS})
+
+target_link_libraries(
+  real_time_correlative_scan_matcher_3d_test
+  ${GTEST_BOTH_LIBRARIES}
+  ${GMOCK_BOTH_LIBRARIES}
+  ${GLOG_LIBRARY}
+  ${PROTOBUF_LIBRARY}
+  ${CERES_LIBRARIES}
+  ${LUA_LIBRARIES})
+
 # Ceres scan matcher 3D test
 add_executable(
   ceres_scan_matcher_3d_test
