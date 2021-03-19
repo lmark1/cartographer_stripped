@@ -1,15 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(cartographer_stripped)
 
+# NOTE: The following three lines are needed to force compile PCL with -std=c++17 see
+# issue https://github.com/PointCloudLibrary/pcl/issues/2686
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS roscpp roslib)
 set(BOOST_COMPONENTS iostreams)
 
 find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 find_package(Ceres REQUIRED COMPONENTS SuiteSparse)
 find_package(Eigen3 REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 # Find LuaGoogle
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
@@ -50,8 +55,23 @@ catkin_package(
   # DEPENDS system_lib
 )
 include_directories(
-  include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/include
-  ${PROJECT_BINARY_DIR} ${LUA_INCLUDE_DIR})
+  include
+  ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
+  ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
+  ${LUA_INCLUDE_DIR}
+  ${PCL_INCLUDE_DIRS})
+
+# NODES
+add_executable(
+  local_trajectory_builder_3d_node
+  src/common/time_conversion.cc src/common/msg_conversion.cc
+  nodes/local_trajectory_builder_3d_node.cpp)
+target_link_libraries(local_trajectory_builder_3d_node local_trajectory_builder_3d
+                      ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# LIBRARIES
 
 add_library(
   real_time_correlative_scan_matcher
@@ -91,12 +111,9 @@ target_link_libraries(
   ${CERES_LIBRARIES}
   ${LUA_LIBRARIES})
 
-# TESTS
-
-# Local Trajectory builder test 3D
-add_executable(
-  local_trajectory_builder_3d_test
-  test/local_trajectory_builder_3d_test.cc
+# local trajectory builder 3D
+add_library(
+  local_trajectory_builder_3d
   src/common/time.cc
   src/sensor/compressed_point_cloud.cc
   src/sensor/point_cloud.cc
@@ -119,7 +136,7 @@ add_executable(
   ${ALL_PROTO_SRCS})
 
 target_link_libraries(
-  local_trajectory_builder_3d_test
+  local_trajectory_builder_3d
   ${GTEST_BOTH_LIBRARIES}
   ${GMOCK_BOTH_LIBRARIES}
   ${GLOG_LIBRARY}
@@ -128,6 +145,13 @@ target_link_libraries(
   ${LUA_LIBRARIES}
   real_time_correlative_scan_matcher
   ceres_scan_matcher)
+
+# TESTS
+
+# Local Trajectory builder test 3D
+add_executable(local_trajectory_builder_3d_test test/local_trajectory_builder_3d_test.cc)
+
+target_link_libraries(local_trajectory_builder_3d_test local_trajectory_builder_3d)
 
 # Real time correlative scan matcher 3D test
 add_executable(real_time_correlative_scan_matcher_3d_test
