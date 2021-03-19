@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(catkin REQUIRED COMPONENTS roscpp roslib)
+find_package(catkin REQUIRED COMPONENTS roscpp roslib tf2_ros)
 set(BOOST_COMPONENTS iostreams)
 
 find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
@@ -66,7 +66,7 @@ include_directories(
 # NODES
 add_executable(
   local_trajectory_builder_3d_node
-  src/common/time_conversion.cc src/common/msg_conversion.cc
+  src/common/time_conversion.cc src/common/msg_conversion.cc src/common/tf_bridge.cc
   nodes/local_trajectory_builder_3d_node.cpp)
 target_link_libraries(local_trajectory_builder_3d_node local_trajectory_builder_3d
                       ${catkin_LIBRARIES} ${PCL_LIBRARIES})

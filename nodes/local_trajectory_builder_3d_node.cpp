@@ -1,5 +1,6 @@
 #include <cartographer_stripped/common/lua_parameter_dictionary_test_helpers.h>
 #include <cartographer_stripped/common/msg_conversion.h>
+#include <cartographer_stripped/common/tf_bridge.h>
 #include <cartographer_stripped/common/time_conversion.h>
 #include <cartographer_stripped/mapping/local_trajectory_builder_3d.h>
 #include <cartographer_stripped/mapping/local_trajectory_builder_options_3d.h>
@@ -11,6 +12,7 @@
 
 std::unique_ptr<cartographer_stripped::mapping::LocalTrajectoryBuilder3D>
     trajectory_builder_ptr;
+std::unique_ptr<cartographer_stripped::TfBridge> tf_bridge_ptr;
 
 const std::string& CheckNoLeadingSlash(const std::string& frame_id) {
   if (frame_id.size() > 0) {
@@ -137,16 +139,16 @@ void pointcloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
   auto [point_cloud, time] =
       cartographer_stripped::ToPointCloudWithIntensities(*msg);
 
-  // TODO(lmark): Add TfBridge
-  // const auto sensor_to_tracking = tf_bridge_.LookupToTracking(
-  //     time, CheckNoLeadingSlash(msg->header.frame_id));
-  // if (sensor_to_tracking != nullptr) {
-  //   trajectory_builder_ptr->AddSensorData(
-  //       sensor_id, carto::sensor::TimedPointCloudData{
-  //                      time, sensor_to_tracking->translation().cast<float>(),
-  //                      carto::sensor::TransformTimedPointCloud(
-  //                          ranges, sensor_to_tracking->cast<float>())});
-  // }
+  const auto sensor_to_tracking = tf_bridge_ptr->LookupToTracking(
+      time, CheckNoLeadingSlash(msg->header.frame_id));
+  if (sensor_to_tracking != nullptr) {
+    trajectory_builder_ptr->AddRangeData(
+        "lidar",
+        cartographer_stripped::sensor::TimedPointCloudData{
+            time, sensor_to_tracking->translation().cast<float>(),
+            cartographer_stripped::sensor::TransformTimedPointCloud(
+                point_cloud.points, sensor_to_tracking->cast<float>())});
+  }
 }
 
 int main(int argc, char** argv) {
@@ -155,6 +157,11 @@ int main(int argc, char** argv) {
   trajectory_builder_ptr = std::make_unique<
       cartographer_stripped::mapping::LocalTrajectoryBuilder3D>(
       CreateTrajectoryBuilderOptions3D(), std::vector<std::string>{"lidar"});
+
+  tf2_ros::Buffer tf2_buffer;
+  tf2_buffer.setUsingDedicatedThread(true);
+  tf_bridge_ptr = std::make_unique<cartographer_stripped::TfBridge>(
+      "base_link", 0.1, &tf2_buffer);
 
   ros::NodeHandle nh;
   auto imu_sub = nh.subscribe("imu", 10, &imu_callback);
