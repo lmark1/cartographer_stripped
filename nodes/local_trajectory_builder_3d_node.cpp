@@ -9,6 +9,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf2_ros/transform_listener.h>
 
 std::unique_ptr<cartographer_stripped::mapping::LocalTrajectoryBuilder3D>
     trajectory_builder_ptr;
@@ -140,7 +141,7 @@ void pointcloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
       cartographer_stripped::ToPointCloudWithIntensities(*msg);
 
   const auto sensor_to_tracking = tf_bridge_ptr->LookupToTracking(
-      time, CheckNoLeadingSlash(msg->header.frame_id));
+      time, "red/velodyne");
   if (sensor_to_tracking != nullptr) {
     trajectory_builder_ptr->AddRangeData(
         "lidar",
@@ -159,14 +160,14 @@ int main(int argc, char** argv) {
       CreateTrajectoryBuilderOptions3D(), std::vector<std::string>{"lidar"});
 
   tf2_ros::Buffer tf2_buffer;
-  tf2_buffer.setUsingDedicatedThread(true);
+  tf2_ros::TransformListener tf(tf2_buffer);
   tf_bridge_ptr = std::make_unique<cartographer_stripped::TfBridge>(
-      "base_link", 0.1, &tf2_buffer);
+      "red/base_link", 0, &tf2_buffer);
 
   ros::NodeHandle nh;
-  auto imu_sub = nh.subscribe("imu", 10, &imu_callback);
-  auto odom_sub = nh.subscribe("odometry", 10, &odom_callback);
-  auto pointcloud_sub = nh.subscribe("pointcloud", 10, &pointcloud_callback);
+  auto imu_sub = nh.subscribe("imu", 1, &imu_callback);
+  auto odom_sub = nh.subscribe("odometry", 1, &odom_callback);
+  auto pointcloud_sub = nh.subscribe("pointcloud", 1, &pointcloud_callback);
 
   ros::spin();
   return 0;
