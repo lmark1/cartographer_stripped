@@ -140,8 +140,8 @@ void pointcloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
   auto [point_cloud, time] =
       cartographer_stripped::ToPointCloudWithIntensities(*msg);
 
-  const auto sensor_to_tracking = tf_bridge_ptr->LookupToTracking(
-      time, "red/velodyne");
+  const auto sensor_to_tracking =
+      tf_bridge_ptr->LookupToTracking(time, "red/velodyne");
   if (sensor_to_tracking != nullptr) {
     trajectory_builder_ptr->AddRangeData(
         "lidar",
@@ -150,6 +150,38 @@ void pointcloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
             cartographer_stripped::sensor::TransformTimedPointCloud(
                 point_cloud.points, sensor_to_tracking->cast<float>())});
   }
+}
+
+sensor_msgs::PointCloud2Ptr get_submap() {
+  if (!trajectory_builder_ptr) {
+    ROS_WARN_THROTTLE(
+        1.0,
+        "[local_trajectory_builder_node] Trajectory builder not initialized.");
+    return boost::make_shared<sensor_msgs::PointCloud2>();
+  }
+
+  if (trajectory_builder_ptr->GetActiveSubmaps().submaps().empty()) {
+    return boost::make_shared<sensor_msgs::PointCloud2>();
+  }
+
+  const auto active_submap =
+      trajectory_builder_ptr->GetActiveSubmaps().submaps().front();
+  const auto& high_res_grid = active_submap->high_resolution_hybrid_grid();
+
+  Eigen::Transform<float, 3, Eigen::Affine> transform =
+      Eigen::Translation3f(active_submap->local_pose().translation().x(),
+                           active_submap->local_pose().translation().y(),
+                           active_submap->local_pose().translation().z()) *
+      Eigen::Quaternion<float>(active_submap->local_pose().rotation().w(),
+                               active_submap->local_pose().rotation().x(),
+                               active_submap->local_pose().rotation().y(),
+                               active_submap->local_pose().rotation().z());
+
+  auto cloud = cartographer_stripped::CreateCloudFromHybridGrid(high_res_grid,
+                                                                0.7, transform);
+  cloud.header.frame_id = "red/map";
+  cloud.header.stamp = ros::Time::now();
+  return boost::make_shared<sensor_msgs::PointCloud2>(std::move(cloud));
 }
 
 int main(int argc, char** argv) {
@@ -168,6 +200,11 @@ int main(int argc, char** argv) {
   auto imu_sub = nh.subscribe("imu", 1, &imu_callback);
   auto odom_sub = nh.subscribe("odometry", 1, &odom_callback);
   auto pointcloud_sub = nh.subscribe("pointcloud", 1, &pointcloud_callback);
+  auto map_pub = nh.advertise<sensor_msgs::PointCloud2>("submap", 1);
+  auto map_timer = nh.createTimer(ros::Duration(ros::Rate(10)),
+                                  [&](const ros::TimerEvent& /*unused*/) {
+                                    map_pub.publish(*get_submap());
+                                  });
 
   ros::spin();
   return 0;

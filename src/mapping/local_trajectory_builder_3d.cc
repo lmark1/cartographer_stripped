@@ -20,10 +20,10 @@
 
 #include "cartographer_stripped/common/time.h"
 #include "cartographer_stripped/mapping/scan_matching/rotational_scan_matcher.h"
-#include "cartographer_stripped/proto/local_trajectory_builder_options_3d.pb.h"
-#include "cartographer_stripped/proto/submaps_options_3d.pb.h"
 #include "cartographer_stripped/proto/ceres_scan_matcher_options_3d.pb.h"
+#include "cartographer_stripped/proto/local_trajectory_builder_options_3d.pb.h"
 #include "cartographer_stripped/proto/real_time_correlative_scan_matcher_options.pb.h"
+#include "cartographer_stripped/proto/submaps_options_3d.pb.h"
 #include "glog/logging.h"
 
 namespace cartographer_stripped {
@@ -99,7 +99,7 @@ std::unique_ptr<transform::Rigid3d> LocalTrajectoryBuilder3D::ScanMatch(
           initial_ceres_pose.rotation());
   kScanMatcherResidualAngleMetric->Observe(residual_angle);
   return std::make_unique<transform::Rigid3d>(matching_submap->local_pose() *
-                                               pose_observation_in_submap);
+                                              pose_observation_in_submap);
 }
 
 void LocalTrajectoryBuilder3D::AddImuData(const sensor::ImuData& imu_data) {
@@ -112,7 +112,8 @@ void LocalTrajectoryBuilder3D::AddImuData(const sensor::ImuData& imu_data) {
   // in time and thus the last two are used.
   constexpr double kExtrapolationEstimationTimeSec = 0.001;
   extrapolator_ = mapping::PoseExtrapolator::InitializeWithImu(
-      ::cartographer_stripped::common::FromSeconds(kExtrapolationEstimationTimeSec),
+      ::cartographer_stripped::common::FromSeconds(
+          kExtrapolationEstimationTimeSec),
       options_.imu_gravity_time_constant(), imu_data);
 }
 

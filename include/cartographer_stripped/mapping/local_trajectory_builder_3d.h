@@ -21,20 +21,20 @@
 #include <memory>
 
 #include "cartographer_stripped/common/time.h"
-#include "cartographer_stripped/mapping/submap_3d.h"
+#include "cartographer_stripped/mapping/motion_filter.h"
+#include "cartographer_stripped/mapping/pose_extrapolator.h"
+#include "cartographer_stripped/mapping/range_data_collator.h"
 #include "cartographer_stripped/mapping/scan_matching/ceres_scan_matcher_3d.h"
 #include "cartographer_stripped/mapping/scan_matching/real_time_correlative_scan_matcher_3d.h"
-#include "cartographer_stripped/mapping/motion_filter.h"
-#include "cartographer_stripped/mapping/range_data_collator.h"
-#include "cartographer_stripped/proto/local_trajectory_builder_options_3d.pb.h"
+#include "cartographer_stripped/mapping/submap_3d.h"
+#include "cartographer_stripped/mapping/trajectory_node.h"
 #include "cartographer_stripped/metrics/family_factory.h"
+#include "cartographer_stripped/proto/local_trajectory_builder_options_3d.pb.h"
 #include "cartographer_stripped/sensor/imu_data.h"
-#include "cartographer_stripped/sensor/voxel_filter.h"
 #include "cartographer_stripped/sensor/odometry_data.h"
 #include "cartographer_stripped/sensor/range_data.h"
+#include "cartographer_stripped/sensor/voxel_filter.h"
 #include "cartographer_stripped/transform/rigid_transform.h"
-#include "cartographer_stripped/mapping/pose_extrapolator.h"
-#include "cartographer_stripped/mapping/trajectory_node.h"
 
 namespace cartographer_stripped {
 namespace mapping {
@@ -74,6 +74,10 @@ class LocalTrajectoryBuilder3D {
   void AddOdometryData(const sensor::OdometryData& odometry_data);
 
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
+
+  inline const mapping::ActiveSubmaps3D& GetActiveSubmaps() const {
+    return active_submaps_;
+  }
 
  private:
   std::unique_ptr<MatchingResult> AddAccumulatedRangeData(
