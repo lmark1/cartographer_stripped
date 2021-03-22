@@ -93,17 +93,33 @@ void PoseExtrapolator::AddPose(const common::Time time,
 }
 
 void PoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
+  
+  // (lmark) Bypass time checks, due to faulty time conversions (?)
+  sensor::ImuData copy_imu_data = imu_data;
+  if (!timed_pose_queue_.empty() &&
+      imu_data.time < timed_pose_queue_.back().time) {
+    copy_imu_data.time = timed_pose_queue_.back().time;
+  }
+
   CHECK(timed_pose_queue_.empty() ||
-        imu_data.time >= timed_pose_queue_.back().time);
-  imu_data_.push_back(imu_data);
+        copy_imu_data.time >= timed_pose_queue_.back().time);
+  imu_data_.push_back(copy_imu_data);
   TrimImuData();
 }
 
 void PoseExtrapolator::AddOdometryData(
     const sensor::OdometryData& odometry_data) {
+
+  // (lmark) Bypass time checks, due to faulty time conversions (?)
+  sensor::OdometryData copy_odometry_data = odometry_data;
+  if (!timed_pose_queue_.empty() &&
+      odometry_data.time < timed_pose_queue_.back().time) {
+    copy_odometry_data.time = timed_pose_queue_.back().time;
+  }
+
   CHECK(timed_pose_queue_.empty() ||
-        odometry_data.time >= timed_pose_queue_.back().time);
-  odometry_data_.push_back(odometry_data);
+        copy_odometry_data.time >= timed_pose_queue_.back().time);
+  odometry_data_.push_back(copy_odometry_data);
   TrimOdometryData();
   if (odometry_data_.size() < 2) {
     return;
