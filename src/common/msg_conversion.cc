@@ -40,6 +40,8 @@
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/MultiEchoLaserScan.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
+#include "sensor_msgs/point_cloud_conversion.h"
 
 namespace {
 
@@ -192,18 +194,95 @@ sensor_msgs::PointCloud2 ToPointCloud2Message(
   return msg;
 }
 
-std::tuple<PointCloudWithIntensities, common::Time>
-ToPointCloudWithIntensities(const sensor_msgs::LaserScan& msg) {
+std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
+    const sensor_msgs::LaserScan& msg) {
   return LaserScanToPointCloudWithIntensities(msg);
 }
 
-std::tuple<PointCloudWithIntensities, common::Time>
-ToPointCloudWithIntensities(const sensor_msgs::MultiEchoLaserScan& msg) {
+std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
+    const sensor_msgs::MultiEchoLaserScan& msg) {
   return LaserScanToPointCloudWithIntensities(msg);
 }
 
-std::tuple<PointCloudWithIntensities, common::Time>
-ToPointCloudWithIntensities(const sensor_msgs::PointCloud2& msg) {
+sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
+    const cartographer_stripped::mapping::HybridGrid& hybrid_grid,
+    double min_probability,
+    Eigen::Transform<float, 3, Eigen::Affine> transform) {
+  double resolution = hybrid_grid.resolution();
+  sensor_msgs::PointCloud2 cloud;
+  cloud.height = 1;  //"unstructured" point cloud
+  cloud.width = 0;
+
+  for (const auto& point : hybrid_grid) {
+    if (point.second > 32767.0 * min_probability) {
+      cloud.width++;
+    }
+  }
+
+  cloud.is_dense = true;
+  cloud.is_bigendian = false;
+  sensor_msgs::PointCloud2Modifier modifier(cloud);
+  modifier.setPointCloud2Fields(4, "x", 1, sensor_msgs::PointField::FLOAT32,
+                                "y", 1, sensor_msgs::PointField::FLOAT32, "z",
+                                1, sensor_msgs::PointField::FLOAT32,
+                                "intensity", 1,
+                                sensor_msgs::PointField::FLOAT32);
+  sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
+  sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
+  sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
+  sensor_msgs::PointCloud2Iterator<float> iter_intensity(cloud, "intensity");
+
+  // for (int i = 0; i < hybrid_grid.values_size(); i++) {
+  //   int value = hybrid_grid.values(i);
+  //   if (value > 32767 * min_probability) {
+  //     int x, y, z;
+  //     x = hybrid_grid.x_indices(i);
+  //     y = hybrid_grid.y_indices(i);
+  //     z = hybrid_grid.z_indices(i);
+  //     // transform the cell indices to an actual voxel center point
+  //     Eigen::Vector3f point =
+  //         transform * Eigen::Vector3f(x * resolution + resolution / 2,
+  //                                     y * resolution + resolution / 2,
+  //                                     z * resolution + resolution / 2);
+  //     *iter_x = point.x();
+  //     *iter_y = point.y();
+  //     *iter_z = point.z();
+  //     int prob_int = hybrid_grid.values(i);
+  //     *iter_intensity = prob_int / 32767.0;  // 2^15
+  //     ++iter_x;
+  //     ++iter_y;
+  //     ++iter_z;
+  //     ++iter_intensity;
+  //   }
+  // }
+
+  for (const auto& point : hybrid_grid) {
+    int value = point.second;
+
+    if (value <= 32767 * min_probability) {
+      continue;
+    }
+
+    auto indices = point.first;
+    Eigen::Vector3f cloud_point =
+        transform * Eigen::Vector3f(indices.x() * resolution + resolution / 2,
+                                    indices.y() * resolution + resolution / 2,
+                                    indices.z() * resolution + resolution / 2);
+    *iter_x = cloud_point.x();
+    *iter_y = cloud_point.y();
+    *iter_z = cloud_point.z();
+    *iter_intensity = value / 32767.0;  // 2^15
+    ++iter_x;
+    ++iter_y;
+    ++iter_z;
+    ++iter_intensity;
+  }
+
+  return cloud;
+}
+
+std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
+    const sensor_msgs::PointCloud2& msg) {
   PointCloudWithIntensities point_cloud;
   // We check for intensity field here to avoid run-time warnings if we pass in
   // a PointCloud2 without intensity.

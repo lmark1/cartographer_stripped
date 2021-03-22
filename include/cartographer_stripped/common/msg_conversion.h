@@ -20,6 +20,7 @@
 #include "cartographer_stripped/common/time.h"
 #include "cartographer_stripped/sensor/point_cloud.h"
 #include "cartographer_stripped/transform/rigid_transform.h"
+#include "cartographer_stripped/mapping/hybrid_grid.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Transform.h"
 #include "geometry_msgs/TransformStamped.h"
@@ -76,6 +77,12 @@ Eigen::Vector3d LatLongAltToEcef(double latitude, double longitude,
 // frame that has z pointing upwards.
 cartographer_stripped::transform::Rigid3d ComputeLocalFrameFromLatLong(
     double latitude, double longitude, double altitude);
+
+// Converts from a HybridGrid to a sensor_msgs::Pointcloud2
+sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
+    const mapping::HybridGrid& hybrid_grid,
+    double min_probability,
+    Eigen::Transform<float, 3, Eigen::Affine> transform);
 
 }  // namespace cartographer_stripped
 
