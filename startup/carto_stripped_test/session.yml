@@ -1,0 +1,12 @@
+name: carto_stripped
+root: ./
+startup_window: roscore
+pre_window: export UAV_NAMESPACE=red; source ~/carto_ws/devel/setup.zsh
+windows:
+  - carto:
+      layout: tiled
+      panes:
+        - roscore
+        - source ~/new_ws/devel/setup.zsh; waitForRos; roslaunch erl_drone robot_state_publisher.launch
+        - waitForRos; rosrun cartographer_stripped local_trajectory_builder_3d_node odometry:=/red/mavros/global_position/local imu:=/red/mavros/imu/data pointcloud:=/red/velodyne_points
+        - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag
