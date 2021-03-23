@@ -1,0 +1,24 @@
+<launch>
+
+  <arg name="namespace" default="$(env UAV_NAMESPACE)"/>
+  <arg name="odometry" default="mavros/global_position/local"/>
+  <arg name="pointcloud" default="velodyne_points"/>
+  <arg name="imu" default="mavros/imu/data"/>
+
+  <arg name="configuration_directory" default="$(find cartographer_stripped)/lua_config"/>
+  <arg name="configuration_basename" default="placeholder.lua"/>
+
+  <node name="local_trajectory_builder_3d" pkg="cartographer_stripped" 
+    type="local_trajectory_builder_3d_node" ns="$(arg namespace)">
+    
+    <!-- Do the remaps -->
+    <remap from="odometry" to="$(arg odometry)"/>
+    <remap from="imu" to="$(arg imu)"/>
+    <remap from="pointcloud" to="$(arg pointcloud)"/>
+
+    <!-- Load Private parameters -->
+    <param name="configuration_basename" value="$(arg configuration_basename)"/>
+    <param name="configuration_directory" value="$(arg configuration_directory)"/>
+  </node>
+
+</launch>
