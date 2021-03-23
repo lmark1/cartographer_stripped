@@ -16,15 +16,11 @@
 std::unique_ptr<cartographer_stripped::mapping::LocalTrajectoryBuilder3D>
     trajectory_builder_ptr;
 std::unique_ptr<cartographer_stripped::TfBridge> tf_bridge_ptr;
-
-const std::string& CheckNoLeadingSlash(const std::string& frame_id) {
-  if (frame_id.size() > 0) {
-    CHECK_NE(frame_id[0], '/') << "The frame_id " << frame_id
-                               << " should not start with a /. See 1.7 in "
-                                  "http://wiki.ros.org/tf2/Migration.";
-  }
-  return frame_id;
-}
+std::string tracking_frame{"tracking_frame"};
+std::string map_frame{"map_frame"};
+std::string published_frame{"published_frame"};
+std::string odom_frame{"odom_frame"};
+std::string lidar_frame{"lidar_frame"};
 
 cartographer_stripped::mapping::proto::LocalTrajectoryBuilderOptions3D
 CreateTrajectoryBuilderOptions3D(const std::string& configuration_directory,
@@ -36,8 +32,16 @@ CreateTrajectoryBuilderOptions3D(const std::string& configuration_directory,
       file_resolver->GetFileContentOrDie(configuration_basename);
   cartographer_stripped::common::LuaParameterDictionary
       lua_parameter_dictionary(code, std::move(file_resolver));
+
+  tracking_frame = lua_parameter_dictionary.GetString("tracking_frame");
+  map_frame = lua_parameter_dictionary.GetString("map_frame");
+  published_frame = lua_parameter_dictionary.GetString("published_frame");
+  odom_frame = lua_parameter_dictionary.GetString("odom_frame");
+  lidar_frame = lua_parameter_dictionary.GetString("lidar_frame");
+
   return cartographer_stripped::mapping::CreateLocalTrajectoryBuilderOptions3D(
-      &lua_parameter_dictionary);
+      lua_parameter_dictionary.GetDictionary("trajectory_builder_3d_options")
+          .get());
 }
 
 void imu_callback(const sensor_msgs::ImuConstPtr& msg) {
@@ -87,7 +91,7 @@ void pointcloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
       cartographer_stripped::ToPointCloudWithIntensities(*msg);
 
   const auto sensor_to_tracking =
-      tf_bridge_ptr->LookupToTracking(time, "red/velodyne");
+      tf_bridge_ptr->LookupToTracking(time, lidar_frame);
   if (sensor_to_tracking != nullptr) {
     trajectory_builder_ptr->AddRangeData(
         "lidar",
@@ -125,7 +129,7 @@ sensor_msgs::PointCloud2Ptr get_submap() {
 
   auto cloud = cartographer_stripped::CreateCloudFromHybridGrid(high_res_grid,
                                                                 0.7, transform);
-  cloud.header.frame_id = "red/map";
+  cloud.header.frame_id = map_frame;
   cloud.header.stamp = ros::Time::now();
   return boost::make_shared<sensor_msgs::PointCloud2>(std::move(cloud));
 }
@@ -149,7 +153,7 @@ int main(int argc, char** argv) {
   tf2_ros::Buffer tf2_buffer;
   tf2_ros::TransformListener tf(tf2_buffer);
   tf_bridge_ptr = std::make_unique<cartographer_stripped::TfBridge>(
-      "red/base_link", 0, &tf2_buffer);
+     tracking_frame, 0, &tf2_buffer);
 
   ros::NodeHandle nh;
   auto imu_sub = nh.subscribe("imu", 1, &imu_callback);
