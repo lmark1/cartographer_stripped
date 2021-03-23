@@ -8,5 +8,12 @@ windows:
       panes:
         - roscore
         - source ~/new_ws/devel/setup.zsh; waitForRos; roslaunch erl_drone robot_state_publisher.launch
-        - waitForRos; rosrun cartographer_stripped local_trajectory_builder_3d_node odometry:=/red/mavros/global_position/local imu:=/red/mavros/imu/data pointcloud:=/red/velodyne_points
+        - waitForRos; rosrun cartographer_stripped local_trajectory_builder_3d_node odometry:=/red/mavros/global_position/local
+          imu:=/red/mavros/imu/data pointcloud:=/red/velodyne_points 
+          _configuration_directory:=$(pwd)/custom_config 
+          _configuration_basename:=trajectory_builder_3d_options.lua
         - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag
+  - rviz:
+      layout: tiled
+      panes:
+        - waitForRos; rviz -d custom_config/rviz_carto_stripped_red.rviz

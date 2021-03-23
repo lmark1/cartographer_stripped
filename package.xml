@@ -7,6 +7,9 @@
   <maintainer email="lmark@todo.todo">lmark</maintainer>
   <license>TODO</license>
 
+  <build_depend>uav_ros_lib</build_depend>
+  <exec_depend>uav_ros_lib</exec_depend>
+  
   <buildtool_depend>catkin</buildtool_depend>
   
   <!-- The export tag contains other, unspecified, tags -->
