@@ -1,0 +1,47 @@
+<launch>
+
+  <arg name="namespace"   default="$(env UAV_NAMESPACE)"/>
+  <arg name="odometry"    default="mavros/global_position/local"/>
+  <arg name="pointcloud"  default="velodyne_points"/>
+  <arg name="imu"         default="mavros/imu/data"/>
+
+  <arg name="configuration_directory" default="$(find cartographer_stripped)/lua_config"/>
+  <arg name="configuration_basename"  default="placeholder.lua"/>
+
+  <!-- Debug arguments -->
+  <arg name="debug" default="false" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="debug_roslaunch" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+
+  <!-- Determine if launching in stanadalone or manager mode-->
+  <arg name="standalone" default="false" />
+  <arg     if="$(arg standalone)" name="nodelet"          value="standalone" />
+  <arg unless="$(arg standalone)" name="nodelet"          value="load" />
+  <arg     if="$(arg standalone)" name="nodelet_manager"  value="" />
+  <arg unless="$(arg standalone)" name="nodelet_manager"  value="mapping_nodelet_manager" />
+
+  <!-- Start the nodelet manager-->
+  <include file="$(find cartographer_stripped)/launch/nodelet_manager.launch">
+    <arg name="standalone"    value="$(arg standalone)"/>
+    <arg name="namespace"     value="$(arg namespace)"/>
+    <arg name="debug"         value="$(arg debug)"/>
+    <arg name="manager_name"  value="$(arg nodelet_manager)"/>
+  </include>
+
+  <!-- Load LocalTrajectoryManager nodelet -->
+  <node 
+    pkg="nodelet" type="nodelet" name="local_trajectory_manager" 
+    args="$(arg nodelet) cartographer_stripped/LocalTrajectoryManager $(arg nodelet_manager)" 
+    output="screen" launch-prefix="$(arg launch_prefix)" ns="$(arg namespace)">
+
+    <!-- Do the remaps -->
+    <remap from="odometry"    to="$(arg odometry)"/>
+    <remap from="imu"         to="$(arg imu)"/>
+    <remap from="pointcloud"  to="$(arg pointcloud)"/>
+
+    <!-- Load Private parameters -->
+    <param name="configuration_basename"  value="$(arg configuration_basename)"/>
+    <param name="configuration_directory" value="$(arg configuration_directory)"/>
+  </node>
+
+</launch>

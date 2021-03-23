@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
   tf2_ros::Buffer tf2_buffer;
   tf2_ros::TransformListener tf(tf2_buffer);
   tf_bridge_ptr = std::make_unique<cartographer_stripped::TfBridge>(
-     tracking_frame, 0, &tf2_buffer);
+      tracking_frame, 0, &tf2_buffer);
 
   ros::NodeHandle nh;
   auto imu_sub = nh.subscribe("imu", 1, &imu_callback);

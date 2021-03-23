@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(catkin REQUIRED COMPONENTS roscpp roslib tf2_ros uav_ros_lib)
+find_package(catkin REQUIRED COMPONENTS roscpp roslib tf2_ros nodelet uav_ros_lib)
 set(BOOST_COMPONENTS iostreams)
 
 find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
@@ -69,6 +69,14 @@ add_executable(
   src/common/time_conversion.cc src/common/msg_conversion.cc src/common/tf_bridge.cc
   src/common/configuration_file_resolver.cc nodes/local_trajectory_builder_3d_node.cpp)
 target_link_libraries(local_trajectory_builder_3d_node local_trajectory_builder_3d
+                      ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# NODELETS
+add_library(
+  local_trajectory_manager
+  src/common/time_conversion.cc src/common/msg_conversion.cc src/common/tf_bridge.cc
+  src/common/configuration_file_resolver.cc nodes/local_trajectory_manager.cpp)
+target_link_libraries(local_trajectory_manager local_trajectory_builder_3d
                       ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 # LIBRARIES

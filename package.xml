@@ -7,6 +7,7 @@
   <maintainer email="lmark@todo.todo">lmark</maintainer>
   <license>TODO</license>
 
+  <depend>nodelet</depend>
   <build_depend>uav_ros_lib</build_depend>
   <exec_depend>uav_ros_lib</exec_depend>
   
@@ -15,6 +16,6 @@
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
-
+    <nodelet plugin="${prefix}/plugins.xml" />
   </export>
 </package>
