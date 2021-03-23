@@ -7,7 +7,9 @@ A stripped down, bare-bones version of the following packages:
 * [cartographer_ros](https://github.com/larics/cartographer_ros)
 * [cartographer](https://github.com/larics/cartographer)
 
-Used for eductaional puposes.
+## Dependencies
+
+* [uav_ros_lib](https://github.com/lmark1/uav_ros_lib) - A collection of useful ROS libraries
 
 ## TODO
 
@@ -16,8 +18,9 @@ Used for eductaional puposes.
   - Pointcloud Scans are accumulated using LocalTrajectoryBuilder3D
   - Only one submap is active, holding the whole map
   - Still uses PoseExtrapolator under the hood - probably dont want that
+- [ ] Node -> Nodelet
 - [ ] Adjust CeresScanMatcher parameters not to match along z-axis if there are no visible horizontal features in the current scan
-- [ ] Figure out how to load .lua configuration files
+- [x] Figure out how to load .lua configuration files
 - [ ] Build a map using \[Estimated odometry - Pointcloud\] message pairs
   - [ ] Adjust LocalTrajectoryBuilder3D to accept \[Odometry - Pointcloud\] pairs
   - [ ] Remove pose extrapolation from LocalTrajectoryBuilder3D
