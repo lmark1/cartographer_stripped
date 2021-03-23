@@ -1,0 +1,3 @@
+include "trajectory_builder_3d_options.lua"
+
+return TRAJECTORY_BUILDER_3D_OPTIONS

@@ -1,6 +1,6 @@
 name: carto_stripped
 root: ./
-startup_window: roscore
+startup_window: carto
 pre_window: export UAV_NAMESPACE=red; source ~/carto_ws/devel/setup.zsh
 windows:
   - carto:
@@ -11,7 +11,7 @@ windows:
         - waitForRos; rosrun cartographer_stripped local_trajectory_builder_3d_node odometry:=/red/mavros/global_position/local
           imu:=/red/mavros/imu/data pointcloud:=/red/velodyne_points 
           _configuration_directory:=$(pwd)/custom_config 
-          _configuration_basename:=trajectory_builder_3d_options.lua
+          _configuration_basename:=carto_stripped_options.lua
         - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag
   - rviz:
       layout: tiled
