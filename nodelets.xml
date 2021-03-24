@@ -1,0 +1,5 @@
+<library path="lib/liblocal_trajectory_manager">
+  <class name="cartographer_stripped/LocalTrajectoryManager" type="cartographer_stripped::LocalTrajectoryManager" base_class_type="nodelet::Nodelet">
+    <description>LocalTrajectoryManager nodelet</description>
+  </class>
+</library>

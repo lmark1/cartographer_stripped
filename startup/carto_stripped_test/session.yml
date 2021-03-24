@@ -3,14 +3,17 @@ root: ./
 startup_window: carto
 pre_window: export UAV_NAMESPACE=red; source ~/carto_ws/devel/setup.zsh
 windows:
-  - carto:
+  - roscore:
       layout: tiled
       panes:
         - roscore
         - source ~/new_ws/devel/setup.zsh; waitForRos; roslaunch erl_drone robot_state_publisher.launch
-        - waitForRos; roslaunch cartographer_stripped local_trajectory_manager.launch standalone:=false
-          configuration_directory:=$(pwd)/custom_config configuration_basename:=carto_stripped_options.lua
         - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag
+  - carto:
+      layout: tiled
+      panes:
+        - waitForRos; roslaunch cartographer_stripped local_trajectory_manager.launch standalone:=false debug:=true
+          configuration_directory:=$(pwd)/custom_config configuration_basename:=carto_stripped_options.lua
   - rviz:
       layout: tiled
       panes:
