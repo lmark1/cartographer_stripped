@@ -1,6 +1,6 @@
 <library path="lib/liblocal_trajectory_builder_3d_plugin">
-  <class name="cartographer_stripped/LocalTrajectoryBuilder3DPlugin" 
-    type="cartographer_stripped::mapping:LocalTrajectoryBuilder3DPlugin" 
+  <class name="LocalTrajectoryBuilder3DPlugin" 
+    type="cartographer_stripped::mapping::LocalTrajectoryBuilder3DPlugin" 
     base_class_type="cartographer_stripped::mapping::trajectory_builder_interface">
     <description>LocalTrajectoryBuilder3D plugin</description>
   </class>

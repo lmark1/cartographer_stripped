@@ -79,7 +79,8 @@ add_library(
   src/common/configuration_file_resolver.cc nodes/local_trajectory_manager.cpp)
 target_link_libraries(local_trajectory_manager local_trajectory_builder_3d
                       ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
+add_dependencies(local_trajectory_manager ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
 # PLUGINS
 
 add_library(
@@ -89,7 +90,8 @@ add_library(
   src/plugins/local_trajectory_builder_3d_plugin.cpp)
 target_link_libraries(local_trajectory_builder_3d_plugin local_trajectory_builder_3d
                       ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
+add_dependencies(local_trajectory_builder_3d_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
 # LIBRARIES
 
 add_library(

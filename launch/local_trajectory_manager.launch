@@ -5,8 +5,9 @@
   <arg name="pointcloud"  default="velodyne_points"/>
   <arg name="imu"         default="mavros/imu/data"/>
 
-  <arg name="configuration_directory" default="$(find cartographer_stripped)/lua_config"/>
-  <arg name="configuration_basename"  default="placeholder.lua"/>
+  <arg name="configuration_directory"     default="$(find cartographer_stripped)/lua_config"/>
+  <arg name="configuration_basename"      default="placeholder.lua"/>
+  <arg name="trajectory_builder_address"  default="LocalTrajectoryBuilder3DPlugin"/>
 
   <!-- Debug arguments -->
   <arg name="debug" default="false" />
@@ -39,7 +40,10 @@
     <remap from="imu"         to="$(arg imu)"/>
     <remap from="pointcloud"  to="$(arg pointcloud)"/>
 
-    <!-- Load Private parameters -->
+    <!-- Load LocalTrajectoryManager parameters -->
+    <param name="trajectory_builder_adress" value="$(arg trajectory_builder_address)"/>
+
+    <!-- Local Trajectory Builder 3D Plugin parameters -->
     <param name="configuration_basename"  value="$(arg configuration_basename)"/>
     <param name="configuration_directory" value="$(arg configuration_directory)"/>
   </node>

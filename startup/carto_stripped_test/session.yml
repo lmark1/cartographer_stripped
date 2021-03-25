@@ -12,7 +12,7 @@ windows:
   - carto:
       layout: tiled
       panes:
-        - waitForRos; roslaunch cartographer_stripped local_trajectory_manager.launch standalone:=false debug:=true
+        - waitForRos; roslaunch cartographer_stripped local_trajectory_manager.launch standalone:=false
           configuration_directory:=$(pwd)/custom_config configuration_basename:=carto_stripped_options.lua
   - rviz:
       layout: tiled
