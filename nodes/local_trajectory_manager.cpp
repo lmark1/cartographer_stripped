@@ -1,5 +1,6 @@
 #include <cartographer_stripped/plugins/trajectory_builder_interface.h>
 #include <uav_ros_lib/param_util.hpp>
+#include <uav_ros_lib/topic_handler.hpp>
 
 #include <nav_msgs/Odometry.h>
 #include <nodelet/nodelet.h>
@@ -7,28 +8,34 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <tf2_ros/transform_listener.h>
+
+#include <mutex>
 
 using iBuilder_t = cartographer_stripped::mapping::trajectory_builder_interface;
 
 namespace cartographer_stripped {
 
-
-/**
- * @brief Local Trajectory Builder nodelet.
- *
- */
 class LocalTrajectoryManager : public nodelet::Nodelet {
  public:
   void onInit() override;
 
  private:
+  void imu_callback(const sensor_msgs::ImuConstPtr& msg);
+  void odom_callback(const nav_msgs::OdometryConstPtr& msg);
+  void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& msg);
+
   // Check if nodelet is initialized
   bool m_is_initialized = false;
 
   // Trajectory builder class loader
   std::unique_ptr<pluginlib::ClassLoader<iBuilder_t>> m_trajectory_builder_loader;
   boost::shared_ptr<iBuilder_t>                       m_trajectory_builder_ptr;
+  std::mutex                                          m_trajectory_builder_mutex;
+
+  // All topic handlers
+  ros_util::TopicHandler<nav_msgs::Odometry>::Ptr       m_odom_handler;
+  ros_util::TopicHandler<sensor_msgs::Imu>::Ptr         m_imu_handler;
+  ros_util::TopicHandler<sensor_msgs::PointCloud2>::Ptr m_pointcloud_handler;
 };
 
 void LocalTrajectoryManager::onInit() {
@@ -74,7 +81,24 @@ void LocalTrajectoryManager::onInit() {
     ros::shutdown();
   }
 
+  // Initialize topic handlers
+  m_odom_handler = std::make_unique<ros_util::TopicHandler<nav_msgs::Odometry>>(
+      nh, "odometry", &LocalTrajectoryManager::odom_callback, this);
+
   m_is_initialized = true;
+}
+
+void LocalTrajectoryManager::imu_callback(const sensor_msgs::ImuConstPtr& msg) {
+  std::scoped_lock lock(m_trajectory_builder_mutex);
+}
+
+void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg) {
+  std::scoped_lock lock(m_trajectory_builder_mutex);
+}
+
+void LocalTrajectoryManager::pointcloud_callback(
+    const sensor_msgs::PointCloud2ConstPtr& msg) {
+  std::scoped_lock lock(m_trajectory_builder_mutex);
 }
 
 }  // namespace cartographer_stripped
