@@ -8,6 +8,9 @@
 #include <cartographer_stripped/plugins/trajectory_builder_interface.h>
 #include <uav_ros_lib/param_util.hpp>
 
+#include <tf2_ros/transform_listener.h>
+#include <mutex>
+
 namespace cartographer_stripped {
 namespace mapping {
 class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
@@ -36,7 +39,7 @@ class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
                                     const std::string& configuration_basename);
 
   // Check if the plugin is initialized
-  bool m_is_initialize = false;
+  bool m_is_initialized = false;
 
   // Default frame name variables
   std::string m_tracking_frame  = "default_tracking_frame";
@@ -51,10 +54,16 @@ class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
 
   // Trajectory builder resources
   std::unique_ptr<LocalTrajectoryBuilder3D> m_trajectory_builder_ptr;
-  std::unique_ptr<TfBridge>                 m_tf_bridge_ptr;
+  std::mutex                                m_trajectory_builder_mutex;
+
+  // TF bridge resources
+  std::unique_ptr<TfBridge>  m_tf_bridge_ptr;
+  tf2_ros::Buffer            m_tf2_buffer;
+  tf2_ros::TransformListener m_tf2_listener;
 };
 
-LocalTrajectoryBuilder3DPlugin::LocalTrajectoryBuilder3DPlugin() {
+LocalTrajectoryBuilder3DPlugin::LocalTrajectoryBuilder3DPlugin()
+    : m_tf2_listener(m_tf2_buffer) {
   ROS_INFO("[LocalTrajectoryBuilder3DPlugin] Constructor");
 }
 
@@ -65,30 +74,108 @@ std::tuple<bool, std::string> LocalTrajectoryBuilder3DPlugin::initialize(
                               m_configuration_basename);
   param_util::getParamOrThrow(nh_private, "configuration_directory",
                               m_configuration_directory);
-  m_is_initialize = true;
+
+  m_trajectory_builder_ptr =
+      std::make_unique<cartographer_stripped::mapping::LocalTrajectoryBuilder3D>(
+          create_trajectory_builder_options(m_configuration_directory,
+                                            m_configuration_basename),
+          std::vector<std::string>{"lidar"});
+  m_tf_bridge_ptr = std::make_unique<cartographer_stripped::TfBridge>(m_tracking_frame,
+                                                                      0.1, &m_tf2_buffer);
+
+  m_is_initialized = true;
   return {true, "LocalTrajectoryBuilder3DPlugin initialized succesfully."};
 }
 
-void LocalTrajectoryBuilder3DPlugin::add_imu_data(sensor_msgs::ImuConstPtr& imu_msg) {
-  if (!m_is_initialize) {
+void LocalTrajectoryBuilder3DPlugin::add_imu_data(sensor_msgs::ImuConstPtr& msg) {
+  if (!m_is_initialized) {
     return;
   }
 
   ROS_INFO_THROTTLE(5.0, "[LocalTrajectoryBuilder3DPlugin] add_imu_data");
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    m_trajectory_builder_ptr->AddImuData(
+        {::cartographer_stripped::FromRos(msg->header.stamp),
+         Eigen::Vector3d{msg->linear_acceleration.x, msg->linear_acceleration.y,
+                         msg->linear_acceleration.z},
+         Eigen::Vector3d{msg->angular_velocity.x, msg->angular_velocity.y,
+                         msg->angular_velocity.z}});
+  }
 }
 
-void LocalTrajectoryBuilder3DPlugin::add_odometry_data(
-    nav_msgs::OdometryConstPtr& odom_msg) {
+void LocalTrajectoryBuilder3DPlugin::add_odometry_data(nav_msgs::OdometryConstPtr& msg) {
+  if (!m_is_initialized) {
+    return;
+  }
+
   ROS_INFO_THROTTLE(5.0, "[LocalTrajectoryBuilder3DPlugin] add_odometry_data");
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    m_trajectory_builder_ptr->AddOdometryData(
+        {::cartographer_stripped::FromRos((msg->header.stamp)),
+         ::cartographer_stripped::transform::Rigid3d(
+             ::cartographer_stripped::transform::Rigid3d::Vector{
+                 msg->pose.pose.position.x, msg->pose.pose.position.y,
+                 msg->pose.pose.position.z},
+             ::cartographer_stripped::transform::Rigid3d::Quaternion{
+                 msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
+                 msg->pose.pose.orientation.y, msg->pose.pose.orientation.z})});
+  }
 }
 
 void LocalTrajectoryBuilder3DPlugin::add_pointcloud2_data(
-    sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
+    sensor_msgs::PointCloud2ConstPtr& msg) {
+  if (!m_is_initialized) {
+    return;
+  }
+
   ROS_INFO_THROTTLE(5.0, "[LocalTrajectoryBuilder3DPlugin] add_pointcloud2_data");
+  auto [point_cloud, time] = ::cartographer_stripped::ToPointCloudWithIntensities(*msg);
+
+  const auto sensor_to_tracking = m_tf_bridge_ptr->LookupToTracking(time, m_lidar_frame);
+  if (sensor_to_tracking != nullptr) {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    m_trajectory_builder_ptr->AddRangeData(
+        m_lidar_frame, ::cartographer_stripped::sensor::TimedPointCloudData{
+                           time, sensor_to_tracking->translation().cast<float>(),
+                           ::cartographer_stripped::sensor::TransformTimedPointCloud(
+                               point_cloud.points, sensor_to_tracking->cast<float>())});
+  }
 }
 
 sensor_msgs::PointCloud2Ptr LocalTrajectoryBuilder3DPlugin::get_map() {
+  if (!m_is_initialized) {
+    return boost::make_shared<sensor_msgs::PointCloud2>();
+  }
+
   ROS_INFO_THROTTLE(5.0, "[LocalTrajectoryBuilder3DPlugin] get_map");
+
+  std::shared_ptr<const Submap3D> active_submap;
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    if (m_trajectory_builder_ptr->GetActiveSubmaps().submaps().empty()) {
+      return boost::make_shared<sensor_msgs::PointCloud2>();
+    }
+
+    active_submap = m_trajectory_builder_ptr->GetActiveSubmaps().submaps().front();
+  }
+
+  const auto& high_res_grid = active_submap->high_resolution_hybrid_grid();
+  Eigen::Transform<float, 3, Eigen::Affine> transform =
+      Eigen::Translation3f(active_submap->local_pose().translation().x(),
+                           active_submap->local_pose().translation().y(),
+                           active_submap->local_pose().translation().z()) *
+      Eigen::Quaternion<float>(active_submap->local_pose().rotation().w(),
+                               active_submap->local_pose().rotation().x(),
+                               active_submap->local_pose().rotation().y(),
+                               active_submap->local_pose().rotation().z());
+
+  auto cloud =
+      ::cartographer_stripped::CreateCloudFromHybridGrid(high_res_grid, 0.7, transform);
+  cloud.header.frame_id = m_map_frame;
+  cloud.header.stamp    = ros::Time::now();
+  return boost::make_shared<sensor_msgs::PointCloud2>(std::move(cloud));
 }
 
 cartographer_stripped::mapping::proto::LocalTrajectoryBuilderOptions3D
