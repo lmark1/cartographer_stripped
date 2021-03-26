@@ -22,7 +22,7 @@ class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
   void add_imu_data(const sensor_msgs::ImuConstPtr& imu_msg) override;
   void add_odometry_data(const nav_msgs::OdometryConstPtr& odom_msg) override;
   void add_pointcloud2_data(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) override;
-
+  geometry_msgs::Transform    get_tracking_frame_transform() override;
   sensor_msgs::PointCloud2Ptr get_map() override;
 
  private:
@@ -102,7 +102,7 @@ void LocalTrajectoryBuilder3DPlugin::add_odometry_data(
   {
     std::scoped_lock lock(m_trajectory_builder_mutex);
     m_trajectory_builder_ptr->AddOdometryData(
-        ::cartographer_stripped::ToOdometryData(msg));
+        ::cartographer_stripped::ToOdometryData(msg), true);
   }
 }
 
@@ -120,9 +120,9 @@ void LocalTrajectoryBuilder3DPlugin::add_pointcloud2_data(
     std::scoped_lock lock(m_trajectory_builder_mutex);
     m_trajectory_builder_ptr->AddRangeData(
         "lidar", ::cartographer_stripped::sensor::TimedPointCloudData{
-                           time, sensor_to_tracking->translation().cast<float>(),
-                           ::cartographer_stripped::sensor::TransformTimedPointCloud(
-                               point_cloud.points, sensor_to_tracking->cast<float>())});
+                     time, sensor_to_tracking->translation().cast<float>(),
+                     ::cartographer_stripped::sensor::TransformTimedPointCloud(
+                         point_cloud.points, sensor_to_tracking->cast<float>())});
   }
 }
 
@@ -179,6 +179,25 @@ LocalTrajectoryBuilder3DPlugin::create_trajectory_builder_options(
 
   return cartographer_stripped::mapping::CreateLocalTrajectoryBuilderOptions3D(
       lua_parameter_dictionary.GetDictionary("trajectory_builder_3d_options").get());
+}
+
+geometry_msgs::Transform LocalTrajectoryBuilder3DPlugin::get_tracking_frame_transform() {
+  transform::Rigid3d pose;
+
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    pose = m_trajectory_builder_ptr->GetLatestPose();
+  }
+
+  geometry_msgs::Transform tf_pose;
+  tf_pose.translation.x = pose.translation().x();
+  tf_pose.translation.y = pose.translation().y();
+  tf_pose.translation.z = pose.translation().z();
+  tf_pose.rotation.x    = pose.rotation().x();
+  tf_pose.rotation.y    = pose.rotation().y();
+  tf_pose.rotation.z    = pose.rotation().z();
+  tf_pose.rotation.w    = pose.rotation().w();
+  return tf_pose;
 }
 
 }  // namespace mapping

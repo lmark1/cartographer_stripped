@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/Transform.h>
 
 namespace cartographer_stripped {
 namespace mapping {
@@ -42,6 +43,13 @@ class trajectory_builder_interface {
    */
   virtual void add_pointcloud2_data(
       const sensor_msgs::PointCloud2ConstPtr& cloud_msg) = 0;
+
+  /**
+   * @brief Get the tracking frame transform object
+   * 
+   * @return geometry_msgs::Transform 
+   */
+  virtual geometry_msgs::Transform get_tracking_frame_transform() = 0;
 
   /**
    * @brief Get the latest constructed PointCloud2 map pointer.

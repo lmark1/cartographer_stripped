@@ -30,6 +30,7 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
   void            pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& msg);
 
   ros::Timer                    m_tf_timer;
+  std::mutex                    m_tf_mutex;
   tf2_ros::TransformBroadcaster m_tf_broadcaster;
   void                          tf_event(const ros::TimerEvent& event);
 
@@ -100,6 +101,8 @@ void LocalTrajectoryManager::onInit() {
   m_pointcloud_pub = nh.advertise<sensor_msgs::PointCloud2>("debug/pointcloud", 1);
 
   // Initialize timers
+  m_tf_timer =
+      nh.createTimer(ros::Duration(0.01), &LocalTrajectoryManager::tf_event, this);
 
   m_is_initialized = true;
 }
@@ -131,7 +134,11 @@ void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg
   transformStamped.transform.rotation.y    = msg->pose.pose.orientation.y;
   transformStamped.transform.rotation.z    = msg->pose.pose.orientation.z;
   transformStamped.transform.rotation.w    = msg->pose.pose.orientation.w;
-  m_tf_broadcaster.sendTransform(transformStamped);
+
+  {
+    std::scoped_lock lock(m_tf_mutex);
+    m_tf_broadcaster.sendTransform(transformStamped);
+  }
 }
 
 void LocalTrajectoryManager::pointcloud_callback(
@@ -152,6 +159,26 @@ void LocalTrajectoryManager::pointcloud_callback(
   republished_cloud.header.stamp    = ros::Time::now();
   republished_cloud.header.frame_id = lidar_frame;
   m_pointcloud_pub.publish(republished_cloud);
+}
+
+void LocalTrajectoryManager::tf_event(const ros::TimerEvent& event) {
+  if (!m_is_initialized) {
+    return;
+  }
+
+  geometry_msgs::TransformStamped tf_stamped;
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    tf_stamped.transform       = m_trajectory_builder_ptr->get_tracking_frame_transform();
+    tf_stamped.header.frame_id = m_trajectory_builder_ptr->get_map_frame();
+    tf_stamped.child_frame_id  = m_trajectory_builder_ptr->get_published_frame();
+  }
+
+  {
+    std::scoped_lock lock(m_tf_mutex);
+    tf_stamped.header.stamp = ros::Time::now();
+    m_tf_broadcaster.sendTransform(tf_stamped);
+  }
 }
 
 }  // namespace cartographer_stripped

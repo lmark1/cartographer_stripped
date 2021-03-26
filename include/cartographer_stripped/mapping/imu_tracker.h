@@ -19,6 +19,7 @@
 
 #include "Eigen/Geometry"
 #include "cartographer_stripped/common/time.h"
+#include <iostream>
 
 namespace cartographer_stripped {
 namespace mapping {
@@ -29,6 +30,7 @@ namespace mapping {
 // though yaw does.
 class ImuTracker {
  public:
+  ImuTracker() : imu_gravity_time_constant_(123){};
   ImuTracker(double imu_gravity_time_constant, common::Time time);
 
   // Advances to the given 'time' and updates the orientation to reflect this.
@@ -37,8 +39,7 @@ class ImuTracker {
   // Updates from an IMU reading (in the IMU frame).
   void AddImuLinearAccelerationObservation(
       const Eigen::Vector3d& imu_linear_acceleration);
-  void AddImuAngularVelocityObservation(
-      const Eigen::Vector3d& imu_angular_velocity);
+  void AddImuAngularVelocityObservation(const Eigen::Vector3d& imu_angular_velocity);
 
   // Query the current time.
   common::Time time() const { return time_; }
@@ -46,13 +47,25 @@ class ImuTracker {
   // Query the current orientation estimate.
   Eigen::Quaterniond orientation() const { return orientation_; }
 
+  void set_orientation(const Eigen::Quaterniond& new_orientation) {
+    // Set Orientation only once externally
+    if (orientation_set_) {
+      return;
+    }
+
+    std::cout << "set orientation!\n";
+    orientation_ = new_orientation;
+    orientation_set_ = true;
+  }
+
  private:
-  const double imu_gravity_time_constant_;
-  common::Time time_;
-  common::Time last_linear_acceleration_time_;
+  const double       imu_gravity_time_constant_;
+  common::Time       time_;
+  common::Time       last_linear_acceleration_time_;
   Eigen::Quaterniond orientation_;
-  Eigen::Vector3d gravity_vector_;
-  Eigen::Vector3d imu_angular_velocity_;
+  Eigen::Vector3d    gravity_vector_;
+  Eigen::Vector3d    imu_angular_velocity_;
+  bool               orientation_set_ = false;
 };
 
 }  // namespace mapping

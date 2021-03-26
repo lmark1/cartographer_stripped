@@ -44,50 +44,56 @@ namespace mapping {
 class LocalTrajectoryBuilder3D {
  public:
   struct InsertionResult {
-    std::shared_ptr<const mapping::TrajectoryNode::Data> constant_data;
+    std::shared_ptr<const mapping::TrajectoryNode::Data>  constant_data;
     std::vector<std::shared_ptr<const mapping::Submap3D>> insertion_submaps;
   };
   struct MatchingResult {
-    common::Time time;
+    common::Time       time;
     transform::Rigid3d local_pose;
-    sensor::RangeData range_data_in_local;
+    sensor::RangeData  range_data_in_local;
     // 'nullptr' if dropped by the motion filter.
     std::unique_ptr<const InsertionResult> insertion_result;
   };
 
   explicit LocalTrajectoryBuilder3D(
       const mapping::proto::LocalTrajectoryBuilderOptions3D& options,
-      const std::vector<std::string>& expected_range_sensor_ids);
+      const std::vector<std::string>&                        expected_range_sensor_ids);
   ~LocalTrajectoryBuilder3D();
 
   LocalTrajectoryBuilder3D(const LocalTrajectoryBuilder3D&) = delete;
   LocalTrajectoryBuilder3D& operator=(const LocalTrajectoryBuilder3D&) = delete;
 
-  void AddImuData(const sensor::ImuData& imu_data);
   // Returns 'MatchingResult' when range data accumulation completed,
   // otherwise 'nullptr'.  `TimedPointCloudData::time` is when the last point in
   // `range_data` was acquired, `TimedPointCloudData::ranges` contains the
   // relative time of point with respect to `TimedPointCloudData::time`.
   std::unique_ptr<MatchingResult> AddRangeData(
-      const std::string& sensor_id,
-      const sensor::TimedPointCloudData& range_data);
-  void AddOdometryData(const sensor::OdometryData& odometry_data);
-
+      const std::string& sensor_id, const sensor::TimedPointCloudData& range_data);
+  void        AddImuData(const sensor::ImuData& imu_data);
+  void        AddOdometryData(const sensor::OdometryData& odometry_data,
+                              bool                        set_orientation = false);
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 
   inline const mapping::ActiveSubmaps3D& GetActiveSubmaps() const {
     return active_submaps_;
   }
 
+  inline transform::Rigid3d GetLatestPose() {
+    if (!extrapolator_) {
+      return {};
+    }
+
+    return extrapolator_->GetLastPose();
+  }
+
  private:
   std::unique_ptr<MatchingResult> AddAccumulatedRangeData(
-      common::Time time,
-      const sensor::RangeData& filtered_range_data_in_tracking,
+      common::Time time, const sensor::RangeData& filtered_range_data_in_tracking,
       const std::optional<common::Duration>& sensor_duration);
 
   std::unique_ptr<InsertionResult> InsertIntoSubmap(
       common::Time time, const sensor::RangeData& filtered_range_data_in_local,
-      const sensor::RangeData& filtered_range_data_in_tracking,
+      const sensor::RangeData&  filtered_range_data_in_tracking,
       const sensor::PointCloud& high_resolution_point_cloud_in_tracking,
       const sensor::PointCloud& low_resolution_point_cloud_in_tracking,
       const transform::Rigid3d& pose_estimate,
@@ -101,23 +107,20 @@ class LocalTrajectoryBuilder3D {
       const sensor::PointCloud& high_resolution_point_cloud_in_tracking);
 
   const mapping::proto::LocalTrajectoryBuilderOptions3D options_;
-  mapping::ActiveSubmaps3D active_submaps_;
+  mapping::ActiveSubmaps3D                              active_submaps_;
 
   mapping::MotionFilter motion_filter_;
   std::unique_ptr<scan_matching::RealTimeCorrelativeScanMatcher3D>
-      real_time_correlative_scan_matcher_;
+                                                     real_time_correlative_scan_matcher_;
   std::unique_ptr<scan_matching::CeresScanMatcher3D> ceres_scan_matcher_;
+  std::unique_ptr<mapping::PoseExtrapolator>         extrapolator_;
 
-  std::unique_ptr<mapping::PoseExtrapolator> extrapolator_;
-
-  int num_accumulated_ = 0;
-  sensor::RangeData accumulated_range_data_;
+  int                                                  num_accumulated_ = 0;
+  sensor::RangeData                                    accumulated_range_data_;
   std::optional<std::chrono::steady_clock::time_point> last_wall_time_;
 
-  std::optional<double> last_thread_cpu_time_seconds_;
-
-  RangeDataCollator range_data_collator_;
-
+  std::optional<double>       last_thread_cpu_time_seconds_;
+  RangeDataCollator           range_data_collator_;
   std::optional<common::Time> last_sensor_time_;
 };
 
