@@ -19,9 +19,9 @@ class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
   std::tuple<bool, std::string> initialize(ros::NodeHandle& nh,
                                            ros::NodeHandle& nh_private) override;
 
-  void add_imu_data(sensor_msgs::ImuConstPtr& imu_msg) override;
-  void add_odometry_data(nav_msgs::OdometryConstPtr& odom_msg) override;
-  void add_pointcloud2_data(sensor_msgs::PointCloud2ConstPtr& cloud_msg) override;
+  void add_imu_data(const sensor_msgs::ImuConstPtr& imu_msg) override;
+  void add_odometry_data(const nav_msgs::OdometryConstPtr& odom_msg) override;
+  void add_pointcloud2_data(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) override;
 
   sensor_msgs::PointCloud2Ptr get_map() override;
 
@@ -87,7 +87,7 @@ std::tuple<bool, std::string> LocalTrajectoryBuilder3DPlugin::initialize(
   return {true, "LocalTrajectoryBuilder3DPlugin initialized succesfully."};
 }
 
-void LocalTrajectoryBuilder3DPlugin::add_imu_data(sensor_msgs::ImuConstPtr& msg) {
+void LocalTrajectoryBuilder3DPlugin::add_imu_data(const sensor_msgs::ImuConstPtr& msg) {
   if (!m_is_initialized) {
     return;
   }
@@ -95,16 +95,12 @@ void LocalTrajectoryBuilder3DPlugin::add_imu_data(sensor_msgs::ImuConstPtr& msg)
   ROS_INFO_THROTTLE(5.0, "[LocalTrajectoryBuilder3DPlugin] add_imu_data");
   {
     std::scoped_lock lock(m_trajectory_builder_mutex);
-    m_trajectory_builder_ptr->AddImuData(
-        {::cartographer_stripped::FromRos(msg->header.stamp),
-         Eigen::Vector3d{msg->linear_acceleration.x, msg->linear_acceleration.y,
-                         msg->linear_acceleration.z},
-         Eigen::Vector3d{msg->angular_velocity.x, msg->angular_velocity.y,
-                         msg->angular_velocity.z}});
+    m_trajectory_builder_ptr->AddImuData(::cartographer_stripped::ToImuData(msg));
   }
 }
 
-void LocalTrajectoryBuilder3DPlugin::add_odometry_data(nav_msgs::OdometryConstPtr& msg) {
+void LocalTrajectoryBuilder3DPlugin::add_odometry_data(
+    const nav_msgs::OdometryConstPtr& msg) {
   if (!m_is_initialized) {
     return;
   }
@@ -113,19 +109,12 @@ void LocalTrajectoryBuilder3DPlugin::add_odometry_data(nav_msgs::OdometryConstPt
   {
     std::scoped_lock lock(m_trajectory_builder_mutex);
     m_trajectory_builder_ptr->AddOdometryData(
-        {::cartographer_stripped::FromRos((msg->header.stamp)),
-         ::cartographer_stripped::transform::Rigid3d(
-             ::cartographer_stripped::transform::Rigid3d::Vector{
-                 msg->pose.pose.position.x, msg->pose.pose.position.y,
-                 msg->pose.pose.position.z},
-             ::cartographer_stripped::transform::Rigid3d::Quaternion{
-                 msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
-                 msg->pose.pose.orientation.y, msg->pose.pose.orientation.z})});
+        ::cartographer_stripped::ToOdometryData(msg));
   }
 }
 
 void LocalTrajectoryBuilder3DPlugin::add_pointcloud2_data(
-    sensor_msgs::PointCloud2ConstPtr& msg) {
+    const sensor_msgs::PointCloud2ConstPtr& msg) {
   if (!m_is_initialized) {
     return;
   }
@@ -137,7 +126,7 @@ void LocalTrajectoryBuilder3DPlugin::add_pointcloud2_data(
   if (sensor_to_tracking != nullptr) {
     std::scoped_lock lock(m_trajectory_builder_mutex);
     m_trajectory_builder_ptr->AddRangeData(
-        m_lidar_frame, ::cartographer_stripped::sensor::TimedPointCloudData{
+        "lidar", ::cartographer_stripped::sensor::TimedPointCloudData{
                            time, sensor_to_tracking->translation().cast<float>(),
                            ::cartographer_stripped::sensor::TransformTimedPointCloud(
                                point_cloud.points, sensor_to_tracking->cast<float>())});

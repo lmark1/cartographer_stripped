@@ -27,21 +27,21 @@ class trajectory_builder_interface {
    * 
    * @param imu_msg 
    */
-  virtual void add_imu_data(sensor_msgs::ImuConstPtr& imu_msg) = 0;
+  virtual void add_imu_data(const sensor_msgs::ImuConstPtr& imu_msg) = 0;
 
   /**
    * @brief Add a new Odometry message to the Trajectory Builder.
    * 
    * @param odom_msg 
    */
-  virtual void add_odometry_data(nav_msgs::OdometryConstPtr& odom_msg) = 0;
+  virtual void add_odometry_data(const nav_msgs::OdometryConstPtr& odom_msg) = 0;
 
   /**
    * @brief Add a new PointCloud2 message to the Trajectory Builder;
    * 
    * @param cloud_msg 
    */
-  virtual void add_pointcloud2_data(sensor_msgs::PointCloud2ConstPtr& cloud_msg) = 0;
+  virtual void add_pointcloud2_data(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) = 0;
 
   /**
    * @brief Get the latest constructed PointCloud2 map pointer.

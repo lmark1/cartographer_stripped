@@ -1,6 +1,5 @@
 #include <cartographer_stripped/plugins/trajectory_builder_interface.h>
 #include <uav_ros_lib/param_util.hpp>
-#include <uav_ros_lib/topic_handler.hpp>
 
 #include <nav_msgs/Odometry.h>
 #include <nodelet/nodelet.h>
@@ -20,9 +19,14 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
   void onInit() override;
 
  private:
-  void imu_callback(const sensor_msgs::ImuConstPtr& msg);
-  void odom_callback(const nav_msgs::OdometryConstPtr& msg);
-  void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& msg);
+  ros::Subscriber m_imu_sub;
+  void            imu_callback(const sensor_msgs::ImuConstPtr& msg);
+
+  ros::Subscriber m_odom_sub;
+  void            odom_callback(const nav_msgs::OdometryConstPtr& msg);
+
+  ros::Subscriber m_pointcloud_sub;
+  void            pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& msg);
 
   // Check if nodelet is initialized
   bool m_is_initialized = false;
@@ -32,10 +36,8 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
   boost::shared_ptr<iBuilder_t>                       m_trajectory_builder_ptr;
   std::mutex                                          m_trajectory_builder_mutex;
 
-  // All topic handlers
-  ros_util::TopicHandler<nav_msgs::Odometry>::Ptr       m_odom_handler;
-  ros_util::TopicHandler<sensor_msgs::Imu>::Ptr         m_imu_handler;
-  ros_util::TopicHandler<sensor_msgs::PointCloud2>::Ptr m_pointcloud_handler;
+  // All publishers
+  ros::Publisher m_map_pub;
 };
 
 void LocalTrajectoryManager::onInit() {
@@ -81,24 +83,35 @@ void LocalTrajectoryManager::onInit() {
     ros::shutdown();
   }
 
-  // Initialize topic handlers
-  m_odom_handler = std::make_unique<ros_util::TopicHandler<nav_msgs::Odometry>>(
-      nh, "odometry", &LocalTrajectoryManager::odom_callback, this);
+  // Initialize subscribers
+  m_odom_sub = nh.subscribe("odometry", 10, &LocalTrajectoryManager::odom_callback, this);
+  m_imu_sub  = nh.subscribe("imu", 10, &LocalTrajectoryManager::imu_callback, this);
+  m_pointcloud_sub =
+      nh.subscribe("pointcloud", 10, &LocalTrajectoryManager::pointcloud_callback, this);
+
+  // Initialize publishers
+  m_map_pub = nh.advertise<sensor_msgs::PointCloud2>("submap", 1);
 
   m_is_initialized = true;
 }
 
 void LocalTrajectoryManager::imu_callback(const sensor_msgs::ImuConstPtr& msg) {
   std::scoped_lock lock(m_trajectory_builder_mutex);
+  m_trajectory_builder_ptr->add_imu_data(msg);
 }
 
 void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg) {
   std::scoped_lock lock(m_trajectory_builder_mutex);
+  m_trajectory_builder_ptr->add_odometry_data(msg);
 }
 
 void LocalTrajectoryManager::pointcloud_callback(
     const sensor_msgs::PointCloud2ConstPtr& msg) {
   std::scoped_lock lock(m_trajectory_builder_mutex);
+  m_trajectory_builder_ptr->add_pointcloud2_data(msg);
+
+  // Publish map as often as pointclouds are added
+  m_map_pub.publish(m_trajectory_builder_ptr->get_map());
 }
 
 }  // namespace cartographer_stripped

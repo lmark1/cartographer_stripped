@@ -18,13 +18,16 @@
 #define CARTOGRAPHER_ROS_CARTOGRAPHER_ROS_MSG_CONVERSION_H
 
 #include "cartographer_stripped/common/time.h"
+#include "cartographer_stripped/mapping/hybrid_grid.h"
+#include "cartographer_stripped/sensor/imu_data.h"
+#include "cartographer_stripped/sensor/odometry_data.h"
 #include "cartographer_stripped/sensor/point_cloud.h"
 #include "cartographer_stripped/transform/rigid_transform.h"
-#include "cartographer_stripped/mapping/hybrid_grid.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Transform.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "nav_msgs/OccupancyGrid.h"
+#include "nav_msgs/Odometry.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/MultiEchoLaserScan.h"
@@ -44,6 +47,10 @@ geometry_msgs::Pose ToGeometryMsgPose(
 
 geometry_msgs::Point ToGeometryMsgPoint(const Eigen::Vector3d& vector3d);
 
+sensor::OdometryData ToOdometryData(const nav_msgs::OdometryConstPtr& msg);
+
+sensor::ImuData ToImuData(const sensor_msgs::ImuConstPtr& msg);
+
 // Converts ROS message to point cloud. Returns the time when the last point
 // was acquired (different from the ROS timestamp). Timing of points is given in
 // the fourth component of each point relative to `Time`.
@@ -62,26 +69,24 @@ ToPointCloudWithIntensities(const sensor_msgs::PointCloud2& msg);
 cartographer_stripped::transform::Rigid3d ToRigid3d(
     const geometry_msgs::TransformStamped& transform);
 
-cartographer_stripped::transform::Rigid3d ToRigid3d(
-    const geometry_msgs::Pose& pose);
+cartographer_stripped::transform::Rigid3d ToRigid3d(const geometry_msgs::Pose& pose);
 
 Eigen::Vector3d ToEigen(const geometry_msgs::Vector3& vector3);
 
 Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion& quaternion);
 
 // Converts from WGS84 (latitude, longitude, altitude) to ECEF.
-Eigen::Vector3d LatLongAltToEcef(double latitude, double longitude,
-                                 double altitude);
+Eigen::Vector3d LatLongAltToEcef(double latitude, double longitude, double altitude);
 
 // Returns a transform that takes ECEF coordinates from nearby points to a local
 // frame that has z pointing upwards.
-cartographer_stripped::transform::Rigid3d ComputeLocalFrameFromLatLong(
-    double latitude, double longitude, double altitude);
+cartographer_stripped::transform::Rigid3d ComputeLocalFrameFromLatLong(double latitude,
+                                                                       double longitude,
+                                                                       double altitude);
 
 // Converts from a HybridGrid to a sensor_msgs::Pointcloud2
 sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
-    const mapping::HybridGrid& hybrid_grid,
-    double min_probability,
+    const mapping::HybridGrid& hybrid_grid, double min_probability,
     Eigen::Transform<float, 3, Eigen::Affine> transform);
 
 }  // namespace cartographer_stripped
