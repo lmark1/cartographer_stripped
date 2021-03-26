@@ -6,7 +6,7 @@ options = {
   map_frame =  namespace.."/map",
   tracking_frame =  namespace.."/base_link",
   published_frame =  namespace.."/base_link",
-  odom_frame = namespace.."/odom",
+  odom_frame = namespace.."/base_link",
   lidar_frame = namespace.."/velodyne"
 }
 

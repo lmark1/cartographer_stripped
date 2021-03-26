@@ -41,13 +41,6 @@ class LocalTrajectoryBuilder3DPlugin : public trajectory_builder_interface {
   // Check if the plugin is initialized
   bool m_is_initialized = false;
 
-  // Default frame name variables
-  std::string m_tracking_frame  = "default_tracking_frame";
-  std::string m_map_frame       = "default_map_frame";
-  std::string m_published_frame = "default_published_frame";
-  std::string m_odom_frame      = "default_odom_frame";
-  std::string m_lidar_frame     = "default_lidar_frame";
-
   // Configuration parameters
   std::string m_configuration_basename  = "default_config.lua";
   std::string m_configuration_directory = "path/to/config";

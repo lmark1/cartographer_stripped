@@ -7,6 +7,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <mutex>
 
@@ -28,6 +29,10 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
   ros::Subscriber m_pointcloud_sub;
   void            pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& msg);
 
+  ros::Timer                    m_tf_timer;
+  tf2_ros::TransformBroadcaster m_tf_broadcaster;
+  void                          tf_event(const ros::TimerEvent& event);
+
   // Check if nodelet is initialized
   bool m_is_initialized = false;
 
@@ -38,6 +43,7 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
 
   // All publishers
   ros::Publisher m_map_pub;
+  ros::Publisher m_pointcloud_pub;
 };
 
 void LocalTrajectoryManager::onInit() {
@@ -90,7 +96,10 @@ void LocalTrajectoryManager::onInit() {
       nh.subscribe("pointcloud", 10, &LocalTrajectoryManager::pointcloud_callback, this);
 
   // Initialize publishers
-  m_map_pub = nh.advertise<sensor_msgs::PointCloud2>("submap", 1);
+  m_map_pub        = nh.advertise<sensor_msgs::PointCloud2>("submap", 1);
+  m_pointcloud_pub = nh.advertise<sensor_msgs::PointCloud2>("debug/pointcloud", 1);
+
+  // Initialize timers
 
   m_is_initialized = true;
 }
@@ -101,17 +110,48 @@ void LocalTrajectoryManager::imu_callback(const sensor_msgs::ImuConstPtr& msg) {
 }
 
 void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg) {
-  std::scoped_lock lock(m_trajectory_builder_mutex);
-  m_trajectory_builder_ptr->add_odometry_data(msg);
+  std::string odom_frame;
+  std::string map_frame;
+
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    m_trajectory_builder_ptr->add_odometry_data(msg);
+    odom_frame = m_trajectory_builder_ptr->get_odom_frame();
+    map_frame  = m_trajectory_builder_ptr->get_map_frame();
+  }
+
+  geometry_msgs::TransformStamped transformStamped;
+  transformStamped.header.stamp            = ros::Time::now();
+  transformStamped.header.frame_id         = map_frame;
+  transformStamped.child_frame_id          = odom_frame;
+  transformStamped.transform.translation.x = msg->pose.pose.position.x;
+  transformStamped.transform.translation.y = msg->pose.pose.position.y;
+  transformStamped.transform.translation.z = msg->pose.pose.position.z;
+  transformStamped.transform.rotation.x    = msg->pose.pose.orientation.x;
+  transformStamped.transform.rotation.y    = msg->pose.pose.orientation.y;
+  transformStamped.transform.rotation.z    = msg->pose.pose.orientation.z;
+  transformStamped.transform.rotation.w    = msg->pose.pose.orientation.w;
+  m_tf_broadcaster.sendTransform(transformStamped);
 }
 
 void LocalTrajectoryManager::pointcloud_callback(
     const sensor_msgs::PointCloud2ConstPtr& msg) {
-  std::scoped_lock lock(m_trajectory_builder_mutex);
-  m_trajectory_builder_ptr->add_pointcloud2_data(msg);
+  sensor_msgs::PointCloud2 republished_cloud;
+  std::string              lidar_frame;
 
-  // Publish map as often as pointclouds are added
-  m_map_pub.publish(m_trajectory_builder_ptr->get_map());
+  {
+    std::scoped_lock lock(m_trajectory_builder_mutex);
+    republished_cloud = *msg;
+    lidar_frame       = m_trajectory_builder_ptr->get_lidar_frame();
+
+    // Publish map as often as pointclouds are added
+    m_trajectory_builder_ptr->add_pointcloud2_data(msg);
+    m_map_pub.publish(m_trajectory_builder_ptr->get_map());
+  }
+
+  republished_cloud.header.stamp    = ros::Time::now();
+  republished_cloud.header.frame_id = lidar_frame;
+  m_pointcloud_pub.publish(republished_cloud);
 }
 
 }  // namespace cartographer_stripped
