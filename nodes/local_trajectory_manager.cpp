@@ -15,11 +15,12 @@ using iBuilder_t = cartographer_stripped::mapping::trajectory_builder_interface;
 
 namespace cartographer_stripped {
 
-class LocalTrajectoryManager : public nodelet::Nodelet {
- public:
+class LocalTrajectoryManager : public nodelet::Nodelet
+{
+public:
   void onInit() override;
 
- private:
+private:
   ros::Subscriber m_imu_sub;
   void            imu_callback(const sensor_msgs::ImuConstPtr& msg);
 
@@ -47,7 +48,8 @@ class LocalTrajectoryManager : public nodelet::Nodelet {
   ros::Publisher m_pointcloud_pub;
 };
 
-void LocalTrajectoryManager::onInit() {
+void LocalTrajectoryManager::onInit()
+{
   ROS_INFO("[LocalTrajectoryManager] onInit()!");
 
   // Load Private parameters
@@ -58,8 +60,8 @@ void LocalTrajectoryManager::onInit() {
 
   // Initialize the trajectory loader
   m_trajectory_builder_loader = std::make_unique<pluginlib::ClassLoader<iBuilder_t>>(
-      "cartographer_stripped",
-      "cartographer_stripped::mapping::trajectory_builder_interface");
+    "cartographer_stripped",
+    "cartographer_stripped::mapping::trajectory_builder_interface");
 
   // Get the builder adress
   std::string builder_adress;
@@ -68,7 +70,7 @@ void LocalTrajectoryManager::onInit() {
   // Load the plugin
   try {
     m_trajectory_builder_ptr =
-        m_trajectory_builder_loader->createInstance(builder_adress);
+      m_trajectory_builder_loader->createInstance(builder_adress);
   } catch (pluginlib::CreateClassException& ex1) {
     ROS_ERROR("[LocalTrajectoryManager]: CreateClassException '%s'",
               builder_adress.c_str());
@@ -94,7 +96,7 @@ void LocalTrajectoryManager::onInit() {
   m_odom_sub = nh.subscribe("odometry", 10, &LocalTrajectoryManager::odom_callback, this);
   m_imu_sub  = nh.subscribe("imu", 10, &LocalTrajectoryManager::imu_callback, this);
   m_pointcloud_sub =
-      nh.subscribe("pointcloud", 10, &LocalTrajectoryManager::pointcloud_callback, this);
+    nh.subscribe("pointcloud", 10, &LocalTrajectoryManager::pointcloud_callback, this);
 
   // Initialize publishers
   m_map_pub        = nh.advertise<sensor_msgs::PointCloud2>("submap", 1);
@@ -102,17 +104,19 @@ void LocalTrajectoryManager::onInit() {
 
   // Initialize timers
   m_tf_timer =
-      nh.createTimer(ros::Duration(0.01), &LocalTrajectoryManager::tf_event, this);
+    nh.createTimer(ros::Duration(0.01), &LocalTrajectoryManager::tf_event, this);
 
   m_is_initialized = true;
 }
 
-void LocalTrajectoryManager::imu_callback(const sensor_msgs::ImuConstPtr& msg) {
+void LocalTrajectoryManager::imu_callback(const sensor_msgs::ImuConstPtr& msg)
+{
   std::scoped_lock lock(m_trajectory_builder_mutex);
   m_trajectory_builder_ptr->add_imu_data(msg);
 }
 
-void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg) {
+void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg)
+{
   std::string odom_frame;
   std::string map_frame;
 
@@ -142,7 +146,8 @@ void LocalTrajectoryManager::odom_callback(const nav_msgs::OdometryConstPtr& msg
 }
 
 void LocalTrajectoryManager::pointcloud_callback(
-    const sensor_msgs::PointCloud2ConstPtr& msg) {
+  const sensor_msgs::PointCloud2ConstPtr& msg)
+{
   sensor_msgs::PointCloud2 republished_cloud;
   std::string              lidar_frame;
 
@@ -161,10 +166,9 @@ void LocalTrajectoryManager::pointcloud_callback(
   m_pointcloud_pub.publish(republished_cloud);
 }
 
-void LocalTrajectoryManager::tf_event(const ros::TimerEvent& event) {
-  if (!m_is_initialized) {
-    return;
-  }
+void LocalTrajectoryManager::tf_event(const ros::TimerEvent& event)
+{
+  if (!m_is_initialized) { return; }
 
   geometry_msgs::TransformStamped tf_stamped;
   {
@@ -181,7 +185,7 @@ void LocalTrajectoryManager::tf_event(const ros::TimerEvent& event) {
   }
 }
 
-}  // namespace cartographer_stripped
+}// namespace cartographer_stripped
 
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(cartographer_stripped::LocalTrajectoryManager, nodelet::Nodelet)
