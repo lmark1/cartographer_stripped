@@ -48,6 +48,7 @@ class PoseExtrapolator {
   // yet.
   common::Time       GetLastPoseTime() const;
   transform::Rigid3d GetLastPose() const;
+  transform::Rigid3d GetLastOdometryData() const;
   common::Time       GetLastExtrapolatedTime() const;
   Eigen::Vector3d    getLinearVelocityFromPoses() const;
 
