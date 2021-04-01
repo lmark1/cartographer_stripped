@@ -7,8 +7,8 @@ windows:
       layout: tiled
       panes:
         - roscore
-        - source ~/new_ws/devel/setup.zsh; waitForRos; roslaunch erl_drone robot_state_publisher.launch
-        - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag
+        - waitForRos; roslaunch cartographer_stripped robot_state_publisher.launch base_link:=slam_link
+        - waitForRos; rosbag play ~/Desktop/pometeno_review/pometeno_review_2021-03-17-16-07-49.bag /tf:=/tf_bla /tf_static:=/tf_static_bla
   - carto:
       layout: tiled
       panes:
