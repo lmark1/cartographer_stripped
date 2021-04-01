@@ -32,8 +32,9 @@ namespace mapping {
 // Keep poses for a certain duration to estimate linear and angular velocity.
 // Uses the velocities to extrapolate motion. Uses IMU and/or odometry data if
 // available to improve the extrapolation.
-class PoseExtrapolator {
- public:
+class PoseExtrapolator
+{
+public:
   explicit PoseExtrapolator(common::Duration pose_queue_duration,
                             double           imu_gravity_time_constant);
 
@@ -41,8 +42,9 @@ class PoseExtrapolator {
   PoseExtrapolator& operator=(const PoseExtrapolator&) = delete;
 
   static std::unique_ptr<PoseExtrapolator> InitializeWithImu(
-      common::Duration pose_queue_duration, double imu_gravity_time_constant,
-      const sensor::ImuData& imu_data);
+    common::Duration       pose_queue_duration,
+    double                 imu_gravity_time_constant,
+    const sensor::ImuData& imu_data);
 
   // Returns the time of the last added pose or Time::min() if no pose was added
   // yet.
@@ -63,7 +65,7 @@ class PoseExtrapolator {
 
   inline std::unique_ptr<ImuTracker>& PeekImuTracker() { return imu_tracker_; }
 
- private:
+private:
   void               UpdateVelocitiesFromPoses();
   void               TrimImuData();
   void               TrimOdometryData();
@@ -73,7 +75,8 @@ class PoseExtrapolator {
   Eigen::Vector3d    ExtrapolateTranslation(common::Time time);
 
   const common::Duration pose_queue_duration_;
-  struct TimedPose {
+  struct TimedPose
+  {
     common::Time       time;
     transform::Rigid3d pose;
   };
@@ -93,7 +96,7 @@ class PoseExtrapolator {
   Eigen::Vector3d angular_velocity_from_odometry_ = Eigen::Vector3d::Zero();
 };
 
-}  // namespace mapping
-}  // namespace cartographer_stripped
+}// namespace mapping
+}// namespace cartographer_stripped
 
-#endif  // CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_H_
+#endif// CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_H_
