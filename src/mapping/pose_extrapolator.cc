@@ -24,23 +24,31 @@
 namespace cartographer_stripped {
 namespace mapping {
 
-PoseExtrapolator::PoseExtrapolator(const common::Duration pose_queue_duration,
-                                   double                 imu_gravity_time_constant)
+PoseExtrapolator::PoseExtrapolator(const common::Duration    pose_queue_duration,
+                                   double                    imu_gravity_time_constant,
+                                   const transform::Rigid3d& initial_pose)
   : pose_queue_duration_(pose_queue_duration),
     gravity_time_constant_(imu_gravity_time_constant),
-    cached_extrapolated_pose_{ common::Time::min(), transform::Rigid3d::Identity() }
+    cached_extrapolated_pose_{ common::Time::min(), initial_pose }
 {}
 
 std::unique_ptr<PoseExtrapolator> PoseExtrapolator::InitializeWithImu(
-  const common::Duration pose_queue_duration,
-  const double           imu_gravity_time_constant,
-  const sensor::ImuData& imu_data)
+  const common::Duration    pose_queue_duration,
+  const double              imu_gravity_time_constant,
+  const sensor::ImuData&    imu_data,
+  const transform::Rigid3d& initial_pose)
 {
-  auto extrapolator =
-    std::make_unique<PoseExtrapolator>(pose_queue_duration, imu_gravity_time_constant);
+  auto extrapolator = std::make_unique<PoseExtrapolator>(
+    pose_queue_duration, imu_gravity_time_constant, initial_pose);
   extrapolator->AddImuData(imu_data);
   extrapolator->imu_tracker_ =
     std::make_unique<ImuTracker>(imu_gravity_time_constant, imu_data.time);
+
+  // Initialize IMU tracker orientation
+  if (imu_data.contains_orientation) {
+    extrapolator->PeekImuTracker()->set_orientation(imu_data.orientation);  
+  }
+
   extrapolator->imu_tracker_->AddImuLinearAccelerationObservation(
     imu_data.linear_acceleration);
   extrapolator->imu_tracker_->AddImuAngularVelocityObservation(imu_data.angular_velocity);

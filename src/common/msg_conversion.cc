@@ -47,29 +47,32 @@ namespace {
 
 // Sizes of PCL point types have to be 4n floats for alignment, as described in
 // http://pointclouds.org/documentation/tutorials/adding_custom_ptype.php
-struct PointXYZT {
+struct PointXYZT
+{
   float x;
   float y;
   float z;
   float time;
 };
 
-struct PointXYZIT {
+struct PointXYZIT
+{
   PCL_ADD_POINT4D;
   float intensity;
   float time;
   float unused_padding[2];
 };
 
-}  // namespace
+}// namespace
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZT,
-                                  (float, x, x)(float, y, y)(float, z, z)(float, time,
+                                  (float, x, x)(float, y, y)(float, z, z)(float,
+                                                                          time,
                                                                           time))
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
-    PointXYZIT, (float, x, x)(float, y, y)(float, z, z)(float, intensity,
-                                                        intensity)(float, time, time))
+  PointXYZIT,
+  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(float, time, time))
 
 namespace cartographer_stripped {
 
@@ -83,7 +86,8 @@ using transform::Rigid3d;
 
 sensor_msgs::PointCloud2 PreparePointCloud2Message(const int64_t      timestamp,
                                                    const std::string& frame_id,
-                                                   const int          num_points) {
+                                                   const int          num_points)
+{
   sensor_msgs::PointCloud2 msg;
   msg.fields.resize(3);
   msg.header.stamp       = ToRos(common::FromUniversal(timestamp));
@@ -121,9 +125,10 @@ bool HasEcho(const sensor_msgs::LaserEcho& echo) { return !echo.echoes.empty(); 
 float GetFirstEcho(const sensor_msgs::LaserEcho& echo) { return echo.echoes[0]; }
 
 // For sensor_msgs::LaserScan and sensor_msgs::MultiEchoLaserScan.
-template <typename LaserMessageType>
+template<typename LaserMessageType>
 std::tuple<PointCloudWithIntensities, common::Time> LaserScanToPointCloudWithIntensities(
-    const LaserMessageType& msg) {
+  const LaserMessageType& msg)
+{
   CHECK_GE(msg.range_min, 0.f);
   CHECK_GE(msg.range_max, msg.range_min);
   if (msg.angle_increment > 0.f) {
@@ -140,7 +145,8 @@ std::tuple<PointCloudWithIntensities, common::Time> LaserScanToPointCloudWithInt
       if (msg.range_min <= first_echo && first_echo <= msg.range_max) {
         const Eigen::AngleAxisf             rotation(angle, Eigen::Vector3f::UnitZ());
         const sensor::TimedRangefinderPoint point{
-            rotation * (first_echo * Eigen::Vector3f::UnitX()), i * msg.time_increment};
+          rotation * (first_echo * Eigen::Vector3f::UnitX()), i * msg.time_increment
+        };
         point_cloud.points.push_back(point);
         if (msg.intensities.size() > 0) {
           CHECK_EQ(msg.intensities.size(), msg.ranges.size());
@@ -158,26 +164,24 @@ std::tuple<PointCloudWithIntensities, common::Time> LaserScanToPointCloudWithInt
   if (!point_cloud.points.empty()) {
     const double duration = point_cloud.points.back().time;
     timestamp += common::FromSeconds(duration);
-    for (auto& point : point_cloud.points) {
-      point.time -= duration;
-    }
+    for (auto& point : point_cloud.points) { point.time -= duration; }
   }
   return std::make_tuple(point_cloud, timestamp);
 }
 
 bool PointCloud2HasField(const sensor_msgs::PointCloud2& pc2,
-                         const std::string&              field_name) {
+                         const std::string&              field_name)
+{
   for (const auto& field : pc2.fields) {
-    if (field.name == field_name) {
-      return true;
-    }
+    if (field.name == field_name) { return true; }
   }
   return false;
 }
 
-sensor_msgs::PointCloud2 ToPointCloud2Message(
-    const int64_t timestamp, const std::string& frame_id,
-    const sensor::TimedPointCloud& point_cloud) {
+sensor_msgs::PointCloud2 ToPointCloud2Message(const int64_t                  timestamp,
+                                              const std::string&             frame_id,
+                                              const sensor::TimedPointCloud& point_cloud)
+{
   auto msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
   ::ros::serialization::OStream stream(msg.data.data(), msg.data.size());
   for (const sensor::TimedRangefinderPoint& point : point_cloud) {
@@ -190,35 +194,46 @@ sensor_msgs::PointCloud2 ToPointCloud2Message(
 }
 
 std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
-    const sensor_msgs::LaserScan& msg) {
+  const sensor_msgs::LaserScan& msg)
+{
   return LaserScanToPointCloudWithIntensities(msg);
 }
 
 std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
-    const sensor_msgs::MultiEchoLaserScan& msg) {
+  const sensor_msgs::MultiEchoLaserScan& msg)
+{
   return LaserScanToPointCloudWithIntensities(msg);
 }
 
 sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
-    const cartographer_stripped::mapping::HybridGrid& hybrid_grid, double min_probability,
-    Eigen::Transform<float, 3, Eigen::Affine> transform) {
+  const cartographer_stripped::mapping::HybridGrid& hybrid_grid,
+  double                                            min_probability,
+  Eigen::Transform<float, 3, Eigen::Affine>         transform)
+{
   double                   resolution = hybrid_grid.resolution();
   sensor_msgs::PointCloud2 cloud;
-  cloud.height = 1;  //"unstructured" point cloud
+  cloud.height = 1;//"unstructured" point cloud
   cloud.width  = 0;
 
   for (const auto& point : hybrid_grid) {
-    if (point.second > 32767.0 * min_probability) {
-      cloud.width++;
-    }
+    if (point.second > 32767.0 * min_probability) { cloud.width++; }
   }
 
   cloud.is_dense     = true;
   cloud.is_bigendian = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
-  modifier.setPointCloud2Fields(4, "x", 1, sensor_msgs::PointField::FLOAT32, "y", 1,
-                                sensor_msgs::PointField::FLOAT32, "z", 1,
-                                sensor_msgs::PointField::FLOAT32, "intensity", 1,
+  modifier.setPointCloud2Fields(4,
+                                "x",
+                                1,
+                                sensor_msgs::PointField::FLOAT32,
+                                "y",
+                                1,
+                                sensor_msgs::PointField::FLOAT32,
+                                "z",
+                                1,
+                                sensor_msgs::PointField::FLOAT32,
+                                "intensity",
+                                1,
                                 sensor_msgs::PointField::FLOAT32);
   sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
@@ -228,19 +243,18 @@ sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
   for (const auto& point : hybrid_grid) {
     int value = point.second;
 
-    if (value <= 32767 * min_probability) {
-      continue;
-    }
+    if (value <= 32767 * min_probability) { continue; }
 
     auto            indices = point.first;
     Eigen::Vector3f cloud_point =
-        transform * Eigen::Vector3f(indices.x() * resolution + resolution / 2,
-                                    indices.y() * resolution + resolution / 2,
-                                    indices.z() * resolution + resolution / 2);
+      transform
+      * Eigen::Vector3f(indices.x() * resolution + resolution / 2,
+                        indices.y() * resolution + resolution / 2,
+                        indices.z() * resolution + resolution / 2);
     *iter_x         = cloud_point.x();
     *iter_y         = cloud_point.y();
     *iter_z         = cloud_point.z();
-    *iter_intensity = value / 32767.0;  // 2^15
+    *iter_intensity = value / 32767.0;// 2^15
     ++iter_x;
     ++iter_y;
     ++iter_z;
@@ -250,27 +264,37 @@ sensor_msgs::PointCloud2 CreateCloudFromHybridGrid(
   return cloud;
 }
 
-sensor::OdometryData ToOdometryData(const nav_msgs::OdometryConstPtr& msg) {
-  return {
-      FromRos((msg->header.stamp)),
-      transform::Rigid3d(
-          transform::Rigid3d::Vector{msg->pose.pose.position.x, msg->pose.pose.position.y,
-                                     msg->pose.pose.position.z},
-          transform::Rigid3d::Quaternion{
-              msg->pose.pose.orientation.w, msg->pose.pose.orientation.x,
-              msg->pose.pose.orientation.y, msg->pose.pose.orientation.z})};
+sensor::OdometryData ToOdometryData(const nav_msgs::OdometryConstPtr& msg)
+{
+  return { FromRos((msg->header.stamp)),
+           transform::Rigid3d(
+             transform::Rigid3d::Vector{ msg->pose.pose.position.x,
+                                         msg->pose.pose.position.y,
+                                         msg->pose.pose.position.z },
+             transform::Rigid3d::Quaternion{ msg->pose.pose.orientation.w,
+                                             msg->pose.pose.orientation.x,
+                                             msg->pose.pose.orientation.y,
+                                             msg->pose.pose.orientation.z }) };
 }
 
-sensor::ImuData ToImuData(const sensor_msgs::ImuConstPtr& msg) {
-  return {FromRos(msg->header.stamp),
-          Eigen::Vector3d{msg->linear_acceleration.x, msg->linear_acceleration.y,
-                          msg->linear_acceleration.z},
-          Eigen::Vector3d{msg->angular_velocity.x, msg->angular_velocity.y,
-                          msg->angular_velocity.z}};
+sensor::ImuData ToImuData(const sensor_msgs::ImuConstPtr& msg)
+{
+  return {
+    FromRos(msg->header.stamp),
+    Eigen::Vector3d{ msg->linear_acceleration.x,
+                     msg->linear_acceleration.y,
+                     msg->linear_acceleration.z },
+    Eigen::Vector3d{
+      msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z },
+    true,
+    Eigen::Quaterniond{
+      msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z }
+  };
 }
 
 std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
-    const sensor_msgs::PointCloud2& msg) {
+  const sensor_msgs::PointCloud2& msg)
+{
   PointCloudWithIntensities point_cloud;
   // We check for intensity field here to avoid run-time warnings if we pass in
   // a PointCloud2 without intensity.
@@ -282,7 +306,7 @@ std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
       point_cloud.intensities.reserve(pcl_point_cloud.size());
       for (const auto& point : pcl_point_cloud) {
         point_cloud.points.push_back(
-            {Eigen::Vector3f{point.x, point.y, point.z}, point.time});
+          { Eigen::Vector3f{ point.x, point.y, point.z }, point.time });
         point_cloud.intensities.push_back(point.intensity);
       }
     } else {
@@ -291,7 +315,8 @@ std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
       point_cloud.points.reserve(pcl_point_cloud.size());
       point_cloud.intensities.reserve(pcl_point_cloud.size());
       for (const auto& point : pcl_point_cloud) {
-        point_cloud.points.push_back({Eigen::Vector3f{point.x, point.y, point.z}, 0.f});
+        point_cloud.points.push_back(
+          { Eigen::Vector3f{ point.x, point.y, point.z }, 0.f });
         point_cloud.intensities.push_back(point.intensity);
       }
     }
@@ -304,7 +329,7 @@ std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
       point_cloud.intensities.reserve(pcl_point_cloud.size());
       for (const auto& point : pcl_point_cloud) {
         point_cloud.points.push_back(
-            {Eigen::Vector3f{point.x, point.y, point.z}, point.time});
+          { Eigen::Vector3f{ point.x, point.y, point.z }, point.time });
         point_cloud.intensities.push_back(1.0f);
       }
     } else {
@@ -313,7 +338,8 @@ std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
       point_cloud.points.reserve(pcl_point_cloud.size());
       point_cloud.intensities.reserve(pcl_point_cloud.size());
       for (const auto& point : pcl_point_cloud) {
-        point_cloud.points.push_back({Eigen::Vector3f{point.x, point.y, point.z}, 0.f});
+        point_cloud.points.push_back(
+          { Eigen::Vector3f{ point.x, point.y, point.z }, 0.f });
         point_cloud.intensities.push_back(1.0f);
       }
     }
@@ -331,25 +357,30 @@ std::tuple<PointCloudWithIntensities, common::Time> ToPointCloudWithIntensities(
   return std::make_tuple(point_cloud, timestamp);
 }
 
-Eigen::Vector3d ToEigen(const geometry_msgs::Vector3& vector3) {
+Eigen::Vector3d ToEigen(const geometry_msgs::Vector3& vector3)
+{
   return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
 }
 
-Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion& quaternion) {
+Eigen::Quaterniond ToEigen(const geometry_msgs::Quaternion& quaternion)
+{
   return Eigen::Quaterniond(quaternion.w, quaternion.x, quaternion.y, quaternion.z);
 }
 
-Rigid3d ToRigid3d(const geometry_msgs::TransformStamped& transform) {
+Rigid3d ToRigid3d(const geometry_msgs::TransformStamped& transform)
+{
   return Rigid3d(ToEigen(transform.transform.translation),
                  ToEigen(transform.transform.rotation));
 }
 
-Rigid3d ToRigid3d(const geometry_msgs::Pose& pose) {
-  return Rigid3d({pose.position.x, pose.position.y, pose.position.z},
+Rigid3d ToRigid3d(const geometry_msgs::Pose& pose)
+{
+  return Rigid3d({ pose.position.x, pose.position.y, pose.position.z },
                  ToEigen(pose.orientation));
 }
 
-geometry_msgs::Transform ToGeometryMsgTransform(const Rigid3d& rigid3d) {
+geometry_msgs::Transform ToGeometryMsgTransform(const Rigid3d& rigid3d)
+{
   geometry_msgs::Transform transform;
   transform.translation.x = rigid3d.translation().x();
   transform.translation.y = rigid3d.translation().y();
@@ -361,7 +392,8 @@ geometry_msgs::Transform ToGeometryMsgTransform(const Rigid3d& rigid3d) {
   return transform;
 }
 
-geometry_msgs::Point ToGeometryMsgPoint(const Eigen::Vector3d& vector3d) {
+geometry_msgs::Point ToGeometryMsgPoint(const Eigen::Vector3d& vector3d)
+{
   geometry_msgs::Point point;
   point.x = vector3d.x();
   point.y = vector3d.y();
@@ -369,7 +401,8 @@ geometry_msgs::Point ToGeometryMsgPoint(const Eigen::Vector3d& vector3d) {
   return point;
 }
 
-geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
+geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d)
+{
   geometry_msgs::Pose pose;
   pose.position      = ToGeometryMsgPoint(rigid3d.translation());
   pose.orientation.w = rigid3d.rotation().w();
@@ -379,12 +412,14 @@ geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
   return pose;
 }
 
-Eigen::Vector3d LatLongAltToEcef(const double latitude, const double longitude,
-                                 const double altitude) {
+Eigen::Vector3d LatLongAltToEcef(const double latitude,
+                                 const double longitude,
+                                 const double altitude)
+{
   // https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
-  constexpr double a          = 6378137.;  // semi-major axis, equator to center.
+  constexpr double a          = 6378137.;// semi-major axis, equator to center.
   constexpr double f          = 1. / 298.257223563;
-  constexpr double b          = a * (1. - f);  // semi-minor axis, pole to center.
+  constexpr double b          = a * (1. - f);// semi-minor axis, pole to center.
   constexpr double a_squared  = a * a;
   constexpr double b_squared  = b * b;
   constexpr double e_squared  = (a_squared - b_squared) / a_squared;
@@ -400,15 +435,17 @@ Eigen::Vector3d LatLongAltToEcef(const double latitude, const double longitude,
   return Eigen::Vector3d(x, y, z);
 }
 
-Rigid3d ComputeLocalFrameFromLatLong(const double latitude, const double longitude,
-                                     const double altitude) {
+Rigid3d ComputeLocalFrameFromLatLong(const double latitude,
+                                     const double longitude,
+                                     const double altitude)
+{
   const Eigen::Vector3d    translation = LatLongAltToEcef(latitude, longitude, altitude);
   const Eigen::Quaterniond rotation =
-      Eigen::AngleAxisd(common::DegToRad(longitude), Eigen::Vector3d::UnitZ()) *
-      Eigen::Quaterniond(Eigen::AngleAxisd(M_PI * 0.5 - common::DegToRad(latitude),
-                                           Eigen::Vector3d::UnitY())) *
-      Eigen::Quaterniond(Eigen::AngleAxisd(M_PI * 0.5, Eigen::Vector3d::UnitZ()));
+    Eigen::AngleAxisd(common::DegToRad(longitude), Eigen::Vector3d::UnitZ())
+    * Eigen::Quaterniond(Eigen::AngleAxisd(M_PI * 0.5 - common::DegToRad(latitude),
+                                           Eigen::Vector3d::UnitY()))
+    * Eigen::Quaterniond(Eigen::AngleAxisd(M_PI * 0.5, Eigen::Vector3d::UnitZ()));
   return Rigid3d(translation, rotation).inverse();
 }
 
-}  // namespace cartographer_stripped
+}// namespace cartographer_stripped

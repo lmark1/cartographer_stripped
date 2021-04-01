@@ -23,13 +23,17 @@
 namespace cartographer_stripped {
 namespace sensor {
 
-struct ImuData {
-  common::Time time;
+struct ImuData
+{
+  common::Time    time;
   Eigen::Vector3d linear_acceleration;
   Eigen::Vector3d angular_velocity;
+
+  bool               contains_orientation = false;
+  Eigen::Quaterniond orientation          = Eigen::Quaterniond::Identity();
 };
 
-}  // namespace sensor
-}  // namespace cartographer_stripped
+}// namespace sensor
+}// namespace cartographer_stripped
 
-#endif  // CARTOGRAPHER_SENSOR_IMU_DATA_H_
+#endif// CARTOGRAPHER_SENSOR_IMU_DATA_H_

@@ -325,12 +325,7 @@ void LocalTrajectoryBuilder3D::AddOdometryData(const sensor::OdometryData& odome
     LOG(INFO) << "Extrapolator not yet initialized.";
     return;
   }
-
-  if (set_orientation) {
-    extrapolator_->PeekImuTracker()->set_orientation(
-        odometry_data.pose.rotation().inverse());
-  }
-
+  
   extrapolator_->AddOdometryData(odometry_data);
 }
 
